@@ -3,7 +3,7 @@ use gameboy::cpu::CPU;
 
 fn main() {
     let mut cpu = CPU::new();
-    
+
     // Test: LD A, 0x42 → ADD A, A → JP 0x1000
     cpu.memory[0] = 0x3E; // LD A, n
     cpu.memory[1] = 0x42;
@@ -19,6 +19,10 @@ fn main() {
     // Run 2 cycles (ADD A, A → A=0x84)
     cpu.cycle();
     assert_eq!(cpu.a, 0x84);
+    // Test flags after ADD A, A
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    assert_eq!(cpu.f & 0x10, 0); // Carry Flag not set
 
     // Run 3 cycles (JP 0x1000)
     cpu.cycle();
