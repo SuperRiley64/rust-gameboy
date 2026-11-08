@@ -110,30 +110,30 @@ impl CPU {
                 self.pc = addr;
             }
             0x01 => { // LD BC, nn
-                let high = self.memory[self.pc as usize] as u8;
-                let low = self.memory[(self.pc + 1) as usize] as u8;
+                let low = self.memory[self.pc as usize];   // Low byte (memory[pc])
+                let high = self.memory[(self.pc + 1) as usize]; // High byte (memory[pc + 1])
                 self.b = high;
                 self.c = low;
                 self.pc += 2;
             }
             0x11 => { // LD DE, nn
-                let high = self.memory[self.pc as usize] as u8;
-                let low = self.memory[(self.pc + 1) as usize] as u8;
+                let low = self.memory[self.pc as usize];
+                let high = self.memory[(self.pc + 1) as usize];
                 self.d = high;
                 self.e = low;
                 self.pc += 2;
             }
             0x21 => { // LD HL, nn
-                let high = self.memory[self.pc as usize] as u8;
-                let low = self.memory[(self.pc + 1) as usize] as u8;
+                let low = self.memory[self.pc as usize];
+                let high = self.memory[(self.pc + 1) as usize];
                 self.h = high;
                 self.l = low;
                 self.pc += 2;
             }
             0x31 => { // LD SP, nn
-                let high = self.memory[self.pc as usize] as u16;
-                let low = self.memory[(self.pc + 1) as usize] as u16;
-                self.sp = (high << 8) | low;
+                let low = self.memory[self.pc as usize];
+                let high = self.memory[(self.pc + 1) as usize];
+                self.sp = ((high as u16) << 8) | (low as u16);
                 self.pc += 2;
             }
             0x04 => { // INC B
