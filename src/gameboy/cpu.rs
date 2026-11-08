@@ -49,7 +49,7 @@ impl CPU {
                 self.d = self.memory[self.pc as usize];
                 self.pc += 1;
             }
-            0x13 => { // LD E, n
+            0x1E => { // LD E, n
                 self.e = self.memory[self.pc as usize];
                 self.pc += 1;
             }
@@ -344,6 +344,86 @@ impl CPU {
                 // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
                 if (self.a & 0x0F) == 0x00 {
                     self.f |= 0x20;
+                }
+            }
+            0x03 => { // INC BC
+                let bc = ((self.b as u16) << 8) | self.c as u16;
+                let new_bc = bc.wrapping_add(1);
+                self.b = (new_bc >> 8) as u8;
+                self.c = (new_bc & 0xFF) as u8;
+
+                self.f = 0;
+                if new_bc == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x0B => { // DEC BC
+                let bc = ((self.b as u16) << 8) | self.c as u16;
+                let new_bc = bc.wrapping_sub(1);
+                self.b = (new_bc >> 8) as u8;
+                self.c = (new_bc & 0xFF) as u8;
+
+                self.f = 0x40; // Subtract flag
+                if new_bc == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x13 => { // INC DE
+                let de = ((self.d as u16) << 8) | self.e as u16;
+                let new_de = de.wrapping_add(1);
+                self.d = (new_de >> 8) as u8;
+                self.e = (new_de & 0xFF) as u8;
+
+                self.f = 0;
+                if new_de == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x1B => { // DEC DE
+                let de = ((self.d as u16) << 8) | self.e as u16;
+                let new_de = de.wrapping_sub(1);
+                self.d = (new_de >> 8) as u8;
+                self.e = (new_de & 0xFF) as u8;
+
+                self.f = 0x40; // Subtract flag
+                if new_de == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x23 => { // INC HL
+                let hl = ((self.h as u16) << 8) | self.l as u16;
+                let new_hl = hl.wrapping_add(1);
+                self.h = (new_hl >> 8) as u8;
+                self.l = (new_hl & 0xFF) as u8;
+
+                self.f = 0;
+                if new_hl == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x2B => { // DEC HL
+                let hl = ((self.h as u16) << 8) | self.l as u16;
+                let new_hl = hl.wrapping_sub(1);
+                self.h = (new_hl >> 8) as u8;
+                self.l = (new_hl & 0xFF) as u8;
+
+                self.f = 0x40; // Subtract flag
+                if new_hl == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x33 => { // INC SP
+                self.sp = self.sp.wrapping_add(1);
+                self.f = 0;
+                if self.sp == 0 {
+                    self.f |= 0x80; // Zero flag
+                }
+            }
+            0x3B => { // DEC SP
+                self.sp = self.sp.wrapping_sub(1);
+                self.f = 0x40; // Subtract flag
+                if self.sp == 0 {
+                    self.f |= 0x80; // Zero flag
                 }
             }
             _ => {} // Unimplemented
