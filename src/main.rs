@@ -188,5 +188,93 @@ fn main() {
     assert_eq!(cpu.pc, 3);      // PC should increment by 2
     println!("Test LD SP, 0x3456: Passed");
 
+    // Test: INC B
+    cpu.pc = 0;
+    cpu.memory[0] = 0x04; // INC B
+    cpu.b = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.b, 0x06); // B should increment by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0); // Subtract Flag cleared
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test INC B: Passed");
+
+    // Test: DEC C
+    cpu.pc = 0;
+    cpu.memory[0] = 0x0D; // DEC C
+    cpu.c = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.c, 0x04); // C should decrement by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0x40); // Subtract Flag set
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test DEC C: Passed");
+
+    // Test: INC D
+    cpu.pc = 0;
+    cpu.memory[0] = 0x14; // INC D
+    cpu.d = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.d, 0x06); // D should increment by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0); // Subtract Flag cleared
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test INC D: Passed");
+
+    // Test: DEC E
+    cpu.pc = 0;
+    cpu.memory[0] = 0x1D; // DEC E
+    cpu.e = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.e, 0x04); // E should decrement by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0x40); // Subtract Flag set
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test DEC E: Passed");
+
+    // Test: INC H
+    cpu.pc = 0;
+    cpu.memory[0] = 0x24; // INC H
+    cpu.h = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.h, 0x06); // H should increment by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0); // Subtract Flag cleared
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test INC H: Passed");
+
+    // Test: DEC L
+    cpu.pc = 0;
+    cpu.memory[0] = 0x2D; // DEC L
+    cpu.l = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.l, 0x04); // L should decrement by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0x40); // Subtract Flag set
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test DEC L: Passed");
+
+    // Test: INC A
+    cpu.pc = 0;
+    cpu.memory[0] = 0x34; // INC A
+    cpu.a = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.a, 0x06); // A should increment by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0); // Subtract Flag cleared
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test INC A: Passed");
+
+    // Test: DEC A
+    cpu.pc = 0;
+    cpu.memory[0] = 0x35; // DEC A
+    cpu.a = 0x05;
+    cpu.cycle();
+    assert_eq!(cpu.a, 0x04); // A should decrement by 1
+    assert_eq!(cpu.f & 0x80, 0); // Zero Flag not set
+    assert_eq!(cpu.f & 0x40, 0x40); // Subtract Flag set
+    assert_eq!(cpu.f & 0x20, 0); // Half Carry Flag not set
+    println!("Test DEC A: Passed");
+
     println!("All tests passed!");
 }

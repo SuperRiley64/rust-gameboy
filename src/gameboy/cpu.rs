@@ -136,6 +136,216 @@ impl CPU {
                 self.sp = (high << 8) | low;
                 self.pc += 2;
             }
+            0x04 => { // INC B
+                self.b = self.b.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.b == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.b & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x05 => { // DEC B
+                self.b = self.b.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.b == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.b & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x0C => { // INC C
+                self.c = self.c.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.c == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.c & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x0D => { // DEC C
+                self.c = self.c.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.c == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.c & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x14 => { // INC D
+                self.d = self.d.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.d == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.d & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x15 => { // DEC D
+                self.d = self.d.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.d == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.d & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x1C => { // INC E
+                self.e = self.e.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.e == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.e & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x1D => { // DEC E
+                self.e = self.e.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.e == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.e & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x24 => { // INC H
+                self.h = self.h.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.h == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.h & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x25 => { // DEC H
+                self.h = self.h.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.h == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.h & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x2C => { // INC L
+                self.l = self.l.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.l == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.l & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x2D => { // DEC L
+                self.l = self.l.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.l == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.l & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x34 => { // INC A
+                self.a = self.a.wrapping_add(1);
+
+                self.f = 0;
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.a == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.a & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
+            0x35 => { // DEC A
+                self.a = self.a.wrapping_sub(1);
+
+                self.f = 0x40; // Set Subtract Flag (bit 6)
+
+                // Set Zero Flag (bit 7): 1 if result is 0
+                if self.a == 0 {
+                    self.f |= 0x80;
+                }
+
+                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+                if (self.a & 0x0F) == 0x00 {
+                    self.f |= 0x20;
+                }
+            }
             _ => {} // Unimplemented
         }
     }
