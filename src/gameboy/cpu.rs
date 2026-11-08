@@ -34,9 +34,54 @@ impl CPU {
         self.pc += 1;
 
         match opcode {
+            0x00 => { // NOP
+                // Do nothing
+            }
+            0x08 => { // LD B, n
+                self.b = self.memory[self.pc as usize];
+                self.pc += 1;
+            }
+            0x09 => { // LD C, n
+                self.c = self.memory[self.pc as usize];
+                self.pc += 1;
+            }
+            0x12 => { // LD D, n
+                self.d = self.memory[self.pc as usize];
+                self.pc += 1;
+            }
+            0x13 => { // LD E, n
+                self.e = self.memory[self.pc as usize];
+                self.pc += 1;
+            }
+            0x26 => { // LD H, n
+                self.h = self.memory[self.pc as usize];
+                self.pc += 1;
+            }
+            0x2E => { // LD L, n
+                self.l = self.memory[self.pc as usize];
+                self.pc += 1;
+            }
             0x3E => { // LD A, n
                 self.a = self.memory[self.pc as usize];
                 self.pc += 1;
+            }
+            0x78 => { // LD A, B
+                self.a = self.b;
+            }
+            0x79 => { // LD A, C
+                self.a = self.c;
+            }
+            0x7A => { // LD A, D
+                self.a = self.d;
+            }
+            0x7B => { // LD A, E
+                self.a = self.e;
+            }
+            0x7C => { // LD A, H
+                self.a = self.h;
+            }
+            0x7D => { // LD A, L
+                self.a = self.l;
             }
             0x87 => { // ADD A, A
                 let (result, overflow) = self.a.overflowing_add(self.a);
@@ -63,6 +108,33 @@ impl CPU {
                 let addr = self.memory[self.pc as usize] as u16 |
                            (self.memory[(self.pc + 1) as usize] as u16) << 8;
                 self.pc = addr;
+            }
+            0x01 => { // LD BC, nn
+                let high = self.memory[self.pc as usize] as u8;
+                let low = self.memory[(self.pc + 1) as usize] as u8;
+                self.b = high;
+                self.c = low;
+                self.pc += 2;
+            }
+            0x11 => { // LD DE, nn
+                let high = self.memory[self.pc as usize] as u8;
+                let low = self.memory[(self.pc + 1) as usize] as u8;
+                self.d = high;
+                self.e = low;
+                self.pc += 2;
+            }
+            0x21 => { // LD HL, nn
+                let high = self.memory[self.pc as usize] as u8;
+                let low = self.memory[(self.pc + 1) as usize] as u8;
+                self.h = high;
+                self.l = low;
+                self.pc += 2;
+            }
+            0x31 => { // LD SP, nn
+                let high = self.memory[self.pc as usize] as u16;
+                let low = self.memory[(self.pc + 1) as usize] as u16;
+                self.sp = (high << 8) | low;
+                self.pc += 2;
             }
             _ => {} // Unimplemented
         }
