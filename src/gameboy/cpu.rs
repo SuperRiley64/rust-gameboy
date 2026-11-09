@@ -29,9 +29,50 @@ impl CPU {
         }
     }
 
+    // ============= HELPER FUNCTIONS ==========================
+
+    // Helper method to increment a register and update flags
+    fn increment_8bit_register(&mut self, reg: u8) -> u8 {
+        let result = reg.wrapping_add(1);
+
+        // Preserve carry flag
+        self.f &= 0x10;
+
+        if result == 0 {
+            self.f |= 0x80; // Zero flag
+        }
+
+        if (reg & 0x0F) == 0x0F {
+            self.f |= 0x20; // Half-carry flag
+        }
+
+        result
+    }
+
+    // Helper method to decrement a register and update flags
+    fn decrement_8bit_register(&mut self, reg: u8) -> u8 {
+        let result = reg.wrapping_sub(1);
+
+        // Zero flag (bit 7): 1 if result is 0
+        if result == 0 {
+            self.f |= 0x80;
+        } else {
+            self.f &= !0x80;
+        }
+
+        // Half Carry (bit 5): 1 if lower 4 bits caused a borrow
+        if (result & 0x0F) == 0 {
+            self.f |= 0x20;
+        } else {
+            self.f &= !0x20;
+        }
+
+        result
+    }
+
+    // Runs the fetch decode execute cycle
     pub fn cycle(&mut self) {
         let opcode = self.memory[self.pc as usize];
-        self.pc += 1;
 
         match opcode {
             0x00 => { // NOP
@@ -136,21 +177,14 @@ impl CPU {
                 self.sp = ((high as u16) << 8) | (low as u16);
                 self.pc += 2;
             }
-            0x04 => { // INC B
-                self.b = self.b.wrapping_add(1);
+            0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 2; } // INC A
+            0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 2; } // INC B
+            0x0C => { self.c = self.increment_8bit_register(self.c); self.pc += 2; } // INC C
+            0x14 => { self.d = self.increment_8bit_register(self.d); self.pc += 2; } // INC D
+            0x1C => { self.e = self.increment_8bit_register(self.e); self.pc += 2; } // INC E
+            0x24 => { self.h = self.increment_8bit_register(self.h); self.pc += 2; } // INC H
+            0x2C => { self.l = self.increment_8bit_register(self.l); self.pc += 2; } // INC L
 
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.b == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.b & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
             0x05 => { // DEC B
                 self.b = self.b.wrapping_sub(1);
 
@@ -163,21 +197,6 @@ impl CPU {
 
                 // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
                 if (self.b & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x0C => { // INC C
-                self.c = self.c.wrapping_add(1);
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.c == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.c & 0x0F) == 0x00 {
                     self.f |= 0x20;
                 }
             }
@@ -196,21 +215,6 @@ impl CPU {
                     self.f |= 0x20;
                 }
             }
-            0x14 => { // INC D
-                self.d = self.d.wrapping_add(1);
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.d == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.d & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
             0x15 => { // DEC D
                 self.d = self.d.wrapping_sub(1);
 
@@ -223,21 +227,6 @@ impl CPU {
 
                 // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
                 if (self.d & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x1C => { // INC E
-                self.e = self.e.wrapping_add(1);
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.e == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.e & 0x0F) == 0x00 {
                     self.f |= 0x20;
                 }
             }
@@ -256,21 +245,6 @@ impl CPU {
                     self.f |= 0x20;
                 }
             }
-            0x24 => { // INC H
-                self.h = self.h.wrapping_add(1);
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.h == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.h & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
             0x25 => { // DEC H
                 self.h = self.h.wrapping_sub(1);
 
@@ -286,21 +260,6 @@ impl CPU {
                     self.f |= 0x20;
                 }
             }
-            0x2C => { // INC L
-                self.l = self.l.wrapping_add(1);
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.l == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.l & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
             0x2D => { // DEC L
                 self.l = self.l.wrapping_sub(1);
 
@@ -313,21 +272,6 @@ impl CPU {
 
                 // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
                 if (self.l & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x3C => { // INC A
-                self.a = self.a.wrapping_add(1);
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.a == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.a & 0x0F) == 0x00 {
                     self.f |= 0x20;
                 }
             }
