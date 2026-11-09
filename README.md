@@ -1,8 +1,11 @@
 # rust-gameboy
-Game Boy emulator project in Rust. This is also an experiment in using local AI (qwen3:14b) with Claude Code to assist in coding. Normally I don't use agentic AI, but I figured I'd get with the times.
+Game Boy emulator project in Rust, vibecoded using qwen3:14b locally.
 
 ## main.rs 
 Currently runs tests on the Game Boy CPU.
 
 ## gameboy module
 Contains cpu.rs, where the registers, opcodes, and memory space is set up.
+
+## context.txt
+An output of the context of my conversation with the AI used to restore the coding session.
