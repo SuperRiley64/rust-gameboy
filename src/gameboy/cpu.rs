@@ -37,15 +37,15 @@ impl CPU {
             0x00 => { // NOP
                 // Do nothing
             }
-            0x08 => { // LD B, n
+            0x06 => { // LD B, n
                 self.b = self.memory[self.pc as usize];
                 self.pc += 1;
             }
-            0x09 => { // LD C, n
+            0x0E => { // LD C, n
                 self.c = self.memory[self.pc as usize];
                 self.pc += 1;
             }
-            0x12 => { // LD D, n
+            0x16 => { // LD D, n
                 self.d = self.memory[self.pc as usize];
                 self.pc += 1;
             }
@@ -316,7 +316,7 @@ impl CPU {
                     self.f |= 0x20;
                 }
             }
-            0x34 => { // INC A
+            0x3C => { // INC A
                 self.a = self.a.wrapping_add(1);
 
                 self.f = 0;
@@ -331,7 +331,7 @@ impl CPU {
                     self.f |= 0x20;
                 }
             }
-            0x35 => { // DEC A
+            0x3D => { // DEC A
                 self.a = self.a.wrapping_sub(1);
 
                 self.f = 0x40; // Set Subtract Flag (bit 6)
