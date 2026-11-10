@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy)]
 pub enum Register16{
     BC,
     DE,
@@ -41,7 +42,7 @@ impl CPU {
         let opcode = self.memory[self.pc as usize];
 
         match opcode {
-            0x00 => { self.sp += 1} // NOP
+            0x00 => { self.pc += 1} // NOP
              
             // 8-bit load immediate instructions
             0x3E => { self.a = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD A, n
@@ -101,7 +102,7 @@ impl CPU {
             0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc += 2; } // DEC DE
             0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 2; } // DEC HL
             0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc += 2; }
-            _ => {} // Unimplemented
+            _ => { self.pc += 1; } // Unimplemented
         }
     }
 
@@ -122,6 +123,9 @@ impl CPU {
             self.f |= 0x20; // Half-carry flag
         }
 
+        // Clear subtract flag
+        self.f &= !0x40;
+
         result
     }
 
@@ -129,19 +133,23 @@ impl CPU {
     fn decrement_8bit_register(&mut self, reg: u8) -> u8 {
         let result = reg.wrapping_sub(1);
 
-        // Zero flag (bit 7): 1 if result is 0
+        // Preserve carry flag
+        self.f &= 0x10;
+
         if result == 0 {
-            self.f |= 0x80;
+            self.f |= 0x80; // Zero flag
         } else {
             self.f &= !0x80;
         }
 
-        // Half Carry (bit 5): 1 if lower 4 bits caused a borrow
-        if (result & 0x0F) == 0 {
-            self.f |= 0x20;
+        if (reg & 0x0F) == 0 {
+            self.f |= 0x20; // Half-carry flag
         } else {
             self.f &= !0x20;
         }
+
+        // Set subtract flag
+        self.f |= 0x40;
 
         result
     }
@@ -170,19 +178,20 @@ impl CPU {
     fn add_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
         let (result, overflow) = reg1.overflowing_add(reg2);
 
+        // Set Zero Flag (bit 7): 1 if result is 0
+        // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+        // Set Carry Flag (bit 4): 1 if overflow occurred
+        // Clear Subtract Flag (bit 6)
         self.f = 0;
 
-        // Set Zero Flag (bit 7): 1 if result is 0
         if result == 0 {
             self.f |= 0x80;
         }
 
-        // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-        if (self.a & 0x0F) >= 0x08 {
+        if (reg1 & 0x0F) >= 0x08 {
             self.f |= 0x20;
         }
 
-        // Set Carry Flag (bit 4): 1 if overflow occurred
         if overflow {
             self.f |= 0x10;
         }
@@ -204,15 +213,10 @@ impl CPU {
         // Assign the updated value to the register.
         self.assign_16bit_register(reg, new_value);
 
-        // Set flags: zero flag if new_value is 0.
-        self.f = 0;
-        if new_value == 0 {
-            self.f |= 0x80; // Assuming 0x80 represents the Zero Flag.
-        }
+        // 16-bit inc and dec on the SM83 do not modify flags.
     }
 
-    // Helper method to increment a 16-bit register and update flags
-    //TODO: Fix flag updates
+    // Helper method to increment a 16-bit register
     fn decrement_16_bit_register(
         &mut self,
         high_byte: u8,
@@ -225,11 +229,7 @@ impl CPU {
         // Assign the updated value to the register.
         self.assign_16bit_register(reg, new_value);
 
-        // Set flags: zero flag if new_value is 0.
-        self.f = 0;
-        if new_value == 0 {
-            self.f |= 0x80; // Assuming 0x80 represents the Zero Flag.
-        }
+        // 16-bit inc and dec on the SM83 do not modify flags.
     }
 
     fn get_16_bit_operand(&mut self, index: u16) -> u16 {

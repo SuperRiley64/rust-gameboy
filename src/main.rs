@@ -17,7 +17,7 @@ mod tests {
     #[test]
     fn test_ld_b_n() {
         let mut cpu = CPU::new();
-        cpu.memory[0x00] = 0x08; // LD B, n
+        cpu.memory[0x00] = 0x06; // LD B, n
         cpu.memory[0x01] = 0x12;
         cpu.pc = 0x00;
         cpu.cycle();
@@ -28,7 +28,7 @@ mod tests {
     #[test]
     fn test_ld_c_n() {
         let mut cpu = CPU::new();
-        cpu.memory[0x00] = 0x09; // LD C, n
+        cpu.memory[0x00] = 0x0E; // LD C, n
         cpu.memory[0x01] = 0x34;
         cpu.pc = 0x00;
         cpu.cycle();
@@ -39,7 +39,7 @@ mod tests {
     #[test]
     fn test_ld_d_n() {
         let mut cpu = CPU::new();
-        cpu.memory[0x00] = 0x12; // LD D, n
+        cpu.memory[0x00] = 0x16; // LD D, n
         cpu.memory[0x01] = 0x56;
         cpu.pc = 0x00;
         cpu.cycle();
@@ -205,7 +205,7 @@ mod tests {
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.b, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
@@ -227,7 +227,7 @@ mod tests {
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.c, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
@@ -249,7 +249,7 @@ mod tests {
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.d, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.e, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
@@ -293,7 +293,7 @@ mod tests {
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.h, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
@@ -315,14 +315,14 @@ mod tests {
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.l, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
     fn test_inc_a() {
         let mut cpu = CPU::new();
         cpu.a = 0x0F;
-        cpu.memory[0x00] = 0x34; // INC A
+        cpu.memory[0x00] = 0x3C; // INC A
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.a, 0x10);
@@ -333,11 +333,11 @@ mod tests {
     fn test_dec_a() {
         let mut cpu = CPU::new();
         cpu.a = 0x10;
-        cpu.memory[0x00] = 0x35; // DEC A
+        cpu.memory[0x00] = 0x3D; // DEC A
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.a, 0x0F);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x60);
     }
 
     #[test]
@@ -345,6 +345,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.b = 0x01;
         cpu.c = 0x00;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x03; // INC BC
         cpu.pc = 0x00;
         cpu.cycle();
@@ -358,12 +359,13 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.b = 0x01;
         cpu.c = 0x01;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x0B; // DEC BC
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.b, 0x01);
         assert_eq!(cpu.c, 0x00);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x00);
     }
 
     #[test]
@@ -371,6 +373,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.d = 0x01;
         cpu.e = 0x00;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x13; // INC DE
         cpu.pc = 0x00;
         cpu.cycle();
@@ -384,12 +387,13 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.d = 0x01;
         cpu.e = 0x01;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x1B; // DEC DE
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.d, 0x01);
         assert_eq!(cpu.e, 0x00);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x00);
     }
 
     #[test]
@@ -397,6 +401,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.h = 0x01;
         cpu.l = 0x00;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x23; // INC HL
         cpu.pc = 0x00;
         cpu.cycle();
@@ -410,18 +415,20 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.h = 0x01;
         cpu.l = 0x01;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x2B; // DEC HL
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.h, 0x01);
         assert_eq!(cpu.l, 0x00);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x00);
     }
 
     #[test]
     fn test_inc_sp() {
         let mut cpu = CPU::new();
         cpu.sp = 0x1234;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x33; // INC SP
         cpu.pc = 0x00;
         cpu.cycle();
@@ -433,11 +440,12 @@ mod tests {
     fn test_dec_sp() {
         let mut cpu = CPU::new();
         cpu.sp = 0x1235;
+        cpu.f = 0x00;
         cpu.memory[0x00] = 0x3B; // DEC SP
         cpu.pc = 0x00;
         cpu.cycle();
         assert_eq!(cpu.sp, 0x1234);
-        assert_eq!(cpu.f, 0x40);
+        assert_eq!(cpu.f, 0x00);
     }
 
     #[test]
