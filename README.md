@@ -1,5 +1,5 @@
 # rust-gameboy
-Game Boy emulator project in Rust, vibecoded using qwen3:14b locally.
+Game Boy emulator project in Rust, vibecoded using gemma4:12b locally.
 
 ## main.rs 
 Currently runs tests on the Game Boy CPU.
