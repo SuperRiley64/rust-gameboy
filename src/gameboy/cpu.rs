@@ -1,10 +1,22 @@
 #[derive(Debug, Clone, Copy)]
+pub enum Register8 {
+    A,
+    B,
+    C,
+    D,
+    E,
+    H,
+    L,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum Register16{
     BC,
     DE,
     HL,
     SP,
 }
+
 
 pub struct CPU {
     pub a: u8,
@@ -62,12 +74,61 @@ impl CPU {
             0x31 => { let val = self.get_16_bit_operand(self.sp); self.assign_16bit_register(Register16::SP, val); self.pc += 3; } // LD SP, nn
 
             // 8-bit load register instructions
-            0x78 => { self.a = self.b; self.pc += 1; } // LD A, B
-            0x79 => { self.a = self.c; self.pc += 1; } // LD A, C
-            0x7A => { self.a = self.d; self.pc += 1; } // LD A, D
-            0x7B => { self.a = self.e; self.pc += 1; } // LD A, E
-            0x7C => { self.a = self.h; self.pc += 1; } // LD A, H
-            0x7D => { self.a = self.l; self.pc += 1; } // LD A, L
+            0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc += 1; } // LD A, A
+            0x78 => { self.ld_reg_to_reg(Register8::B, Register8::A); self.pc += 1; } // LD A, B
+            0x79 => { self.ld_reg_to_reg(Register8::C, Register8::A); self.pc += 1; } // LD A, C
+            0x7A => { self.ld_reg_to_reg(Register8::D, Register8::A); self.pc += 1; } // LD A, D
+            0x7B => { self.ld_reg_to_reg(Register8::E, Register8::A); self.pc += 1; } // LD A, E
+            0x7C => { self.ld_reg_to_reg(Register8::H, Register8::A); self.pc += 1; } // LD A, H
+            0x7D => { self.ld_reg_to_reg(Register8::L, Register8::A); self.pc += 1; } // LD A, L
+
+            0x40 => { self.ld_reg_to_reg(Register8::B, Register8::B); self.pc += 1; } // LD B, B
+            0x47 => { self.ld_reg_to_reg(Register8::A, Register8::B); self.pc += 1; } // LD B, A
+            0x41 => { self.ld_reg_to_reg(Register8::C, Register8::B); self.pc += 1; } // LD B, C
+            0x42 => { self.ld_reg_to_reg(Register8::D, Register8::B); self.pc += 1; } // LD B, D
+            0x43 => { self.ld_reg_to_reg(Register8::E, Register8::B); self.pc += 1; } // LD B, E
+            0x44 => { self.ld_reg_to_reg(Register8::H, Register8::B); self.pc += 1; } // LD B, H
+            0x45 => { self.ld_reg_to_reg(Register8::L, Register8::B); self.pc += 1; } // LD B, L
+
+            0x4F => { self.ld_reg_to_reg(Register8::A, Register8::C); self.pc += 1; } // LD C, A
+            0x48 => { self.ld_reg_to_reg(Register8::B, Register8::C); self.pc += 1; } // LD C, B
+            0x49 => { self.ld_reg_to_reg(Register8::C, Register8::C); self.pc += 1; } // LD C, C
+            0x4A => { self.ld_reg_to_reg(Register8::D, Register8::C); self.pc += 1; } // LD C, D
+            0x4B => { self.ld_reg_to_reg(Register8::E, Register8::C); self.pc += 1; } // LD C, E
+            0x4C => { self.ld_reg_to_reg(Register8::H, Register8::C); self.pc += 1; } // LD C, H
+            0x4D => { self.ld_reg_to_reg(Register8::L, Register8::C); self.pc += 1; } // LD C, L
+
+            0x85 => { self.ld_reg_to_reg(Register8::A, Register8::D); self.pc += 1; } // LD D, A
+            0x50 => { self.ld_reg_to_reg(Register8::B, Register8::D); self.pc += 1; } // LD D, B
+            0x51 => { self.ld_reg_to_reg(Register8::C, Register8::D); self.pc += 1; } // LD D, C
+            0x52 => { self.ld_reg_to_reg(Register8::D, Register8::D); self.pc += 1; } // LD D, D
+            0x53 => { self.ld_reg_to_reg(Register8::E, Register8::D); self.pc += 1; } // LD D, E
+            0x54 => { self.ld_reg_to_reg(Register8::H, Register8::D); self.pc += 1; } // LD D, H
+            0x55 => { self.ld_reg_to_reg(Register8::L, Register8::D); self.pc += 1; } // LD D, L
+
+            0x5F => { self.ld_reg_to_reg(Register8::A, Register8::E); self.pc += 1; } // LD E, A
+            0x58 => { self.ld_reg_to_reg(Register8::B, Register8::E); self.pc += 1; } // LD E, B
+            0x59 => { self.ld_reg_to_reg(Register8::C, Register8::E); self.pc += 1; } // LD E, C
+            0x5A => { self.ld_reg_to_reg(Register8::D, Register8::E); self.pc += 1; } // LD E, D
+            0x5B => { self.ld_reg_to_reg(Register8::E, Register8::E); self.pc += 1; } // LD E, E
+            0x5C => { self.ld_reg_to_reg(Register8::H, Register8::E); self.pc += 1; } // LD E, H
+            0x5D => { self.ld_reg_to_reg(Register8::L, Register8::E); self.pc += 1; } // LD E, L
+
+            0x67 => { self.ld_reg_to_reg(Register8::A, Register8::H); self.pc += 1; } // LD H, A
+            0x60 => { self.ld_reg_to_reg(Register8::B, Register8::H); self.pc += 1; } // LD H, B
+            0x61 => { self.ld_reg_to_reg(Register8::C, Register8::H); self.pc += 1; } // LD H, C
+            0x62 => { self.ld_reg_to_reg(Register8::D, Register8::H); self.pc += 1; } // LD H, D
+            0x63 => { self.ld_reg_to_reg(Register8::E, Register8::H); self.pc += 1; } // LD H, E
+            0x64 => { self.ld_reg_to_reg(Register8::H, Register8::H); self.pc += 1; } // LD H, H
+            0x65 => { self.ld_reg_to_reg(Register8::L, Register8::H); self.pc += 1; } // LD H, L
+
+            0x6F => { self.ld_reg_to_reg(Register8::A, Register8::L); self.pc += 1; } // LD L, A
+            0x68 => { self.ld_reg_to_reg(Register8::B, Register8::L); self.pc += 1; } // LD L, B
+            0x69 => { self.ld_reg_to_reg(Register8::C, Register8::L); self.pc += 1; } // LD L, C
+            0x6A => { self.ld_reg_to_reg(Register8::D, Register8::L); self.pc += 1; } // LD L, D
+            0x6B => { self.ld_reg_to_reg(Register8::E, Register8::L); self.pc += 1; } // LD L, E
+            0x6C => { self.ld_reg_to_reg(Register8::H, Register8::L); self.pc += 1; } // LD L, H
+            0x6D => { self.ld_reg_to_reg(Register8::L, Register8::L); self.pc += 1; } // LD L, L
 
             // 8-bit arithmetic instructions
             0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc += 1; } // ADD A, A
@@ -234,7 +295,29 @@ impl CPU {
         // 16-bit inc and dec on the SM83 do not modify flags.
     }
 
-    fn get_16_bit_operand(&mut self, index: u16) -> u16 {
+    fn ld_reg_to_reg(&mut self, src_reg: Register8, dest_reg: Register8) {
+        let src_val = match src_reg {
+            Register8::A => self.a,
+            Register8::B => self.b,
+            Register8::C => self.c,
+            Register8::D => self.d,
+            Register8::E => self.e,
+            Register8::H => self.h,
+            Register8::L => self.l,
+        };
+
+        match dest_reg {
+            Register8::A => self.a = src_val,
+            Register8::B => self.b = src_val,
+            Register8::C => self.c = src_val,
+            Register8::D => self.d = src_val,
+            Register8::E => self.e = src_val,
+            Register8::H => self.h = src_val,
+            Register8::L => self.l = src_val,
+        }
+    }
+
+    fn get_16_bit_operand(&mut self, index: u16) -> u16 {                                                                                                                                        
         self.memory[(index + 1) as usize] as u16 | (self.memory[(index + 2) as usize] as u16) << 8
     }
 
