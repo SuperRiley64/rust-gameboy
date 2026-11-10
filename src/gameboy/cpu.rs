@@ -1,3 +1,10 @@
+pub enum Register16{
+    BC,
+    DE,
+    HL,
+    SP,
+}
+
 pub struct CPU {
     pub a: u8,
     pub f: u8,
@@ -9,7 +16,7 @@ pub struct CPU {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
-    pub memory: [u8; 0x10000],
+    pub memory: [u8; 0x10000]
 }
 
 impl CPU {
@@ -26,6 +33,75 @@ impl CPU {
             sp: 0,
             pc: 0,
             memory: [0; 0x10000],
+        }
+    }
+
+    // Runs the fetch decode execute cycle
+    pub fn cycle(&mut self) {
+        let opcode = self.memory[self.pc as usize];
+
+        match opcode {
+            0x00 => { self.sp += 1} // NOP
+             
+            // 8-bit load immediate instructions
+            0x3E => { self.a = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD A, n
+            0x06 => { self.b = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD B, n
+            0x0E => { self.c = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD C, n
+            0x16 => { self.d = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD D, n
+            0x1E => { self.e = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD E, n
+            0x26 => { self.h = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD H, n
+            0x2E => { self.l = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD L, n
+
+            // 16-bit load immediate instructions
+            0x01 => { let val = self.get_16_bit_operand(self.sp); self.assign_16bit_register(Register16::BC, val); self.pc += 3; } // LD BC, nn
+            0x11 => { let val = self.get_16_bit_operand(self.sp); self.assign_16bit_register(Register16::DE, val); self.pc += 3; } // LD DE, nn
+            0x21 => { let val = self.get_16_bit_operand(self.sp); self.assign_16bit_register(Register16::HL, val); self.pc += 3; } // LD HL, nn
+            0x31 => { let val = self.get_16_bit_operand(self.sp); self.assign_16bit_register(Register16::SP, val); self.pc += 3; } // LD SP, nn
+
+            // 8-bit load register instructions
+            0x78 => { self.a = self.b; self.pc += 1; } // LD A, B
+            0x79 => { self.a = self.c; self.pc += 1; } // LD A, C
+            0x7A => { self.a = self.d; self.pc += 1; } // LD A, D
+            0x7B => { self.a = self.e; self.pc += 1; } // LD A, E
+            0x7C => { self.a = self.h; self.pc += 1; } // LD A, H
+            0x7D => { self.a = self.l; self.pc += 1; } // LD A, L
+
+            // 8-bit arithmetic instructions
+            0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc += 1; } // ADD A, A
+
+            // Jump instructions
+            0xC3 => {self.pc = self.get_16_bit_operand(self.sp)} // JP nn
+
+            // 8-bit increment instructions
+            0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; } // INC A
+            0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 1; } // INC B
+            0x0C => { self.c = self.increment_8bit_register(self.c); self.pc += 1; } // INC C
+            0x14 => { self.d = self.increment_8bit_register(self.d); self.pc += 1; } // INC D
+            0x1C => { self.e = self.increment_8bit_register(self.e); self.pc += 1; } // INC E
+            0x24 => { self.h = self.increment_8bit_register(self.h); self.pc += 1; } // INC H
+            0x2C => { self.l = self.increment_8bit_register(self.l); self.pc += 1; } // INC L
+
+            // 8-bit decrement instructions
+            0x3D => { self.a = self.decrement_8bit_register(self.a); self.pc += 1; } // DEC A
+            0x05 => { self.b = self.decrement_8bit_register(self.b); self.pc += 1; } // DEC B
+            0x0D => { self.c = self.decrement_8bit_register(self.c); self.pc += 1; } // DEC C
+            0x15 => { self.d = self.decrement_8bit_register(self.d); self.pc += 1; } // DEC D
+            0x1D => { self.e = self.decrement_8bit_register(self.e); self.pc += 1; } // DEC E
+            0x25 => { self.h = self.decrement_8bit_register(self.h); self.pc += 1; } // DEC H
+            0x2D => { self.l = self.decrement_8bit_register(self.l); self.pc += 1; } // DEC L
+
+            // 16-bit increment instructions
+            0x03 => { self.increment_16_bit_register(self.b, self.c, Register16::BC); self.pc += 2; } // INC BC
+            0x13 => { self.increment_16_bit_register(self.d, self.e, Register16::DE); self.pc += 2; } // INC DE
+            0x23 => { self.increment_16_bit_register(self.h, self.l, Register16::HL); self.pc += 2; } // INC HL
+            0x33 => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.increment_16_bit_register(high, low, Register16::SP); self.pc += 2; } // INC SP
+
+            // 16-bit decrement instructions
+            0x0B => { self.decrement_16_bit_register(self.b, self.c, Register16::BC); self.pc += 2; } // DEC BC
+            0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc += 2; } // DEC DE
+            0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 2; } // DEC HL
+            0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc += 2; }
+            _ => {} // Unimplemented
         }
     }
 
@@ -70,307 +146,95 @@ impl CPU {
         result
     }
 
-    // Runs the fetch decode execute cycle
-    pub fn cycle(&mut self) {
-        let opcode = self.memory[self.pc as usize];
-
-        match opcode {
-            0x00 => { // NOP
-                // Do nothing
-            }
-            0x06 => { // LD B, n
-                self.b = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x0E => { // LD C, n
-                self.c = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x16 => { // LD D, n
-                self.d = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x1E => { // LD E, n
-                self.e = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x26 => { // LD H, n
-                self.h = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x2E => { // LD L, n
-                self.l = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x3E => { // LD A, n
-                self.a = self.memory[self.pc as usize];
-                self.pc += 1;
-            }
-            0x78 => { // LD A, B
-                self.a = self.b;
-            }
-            0x79 => { // LD A, C
-                self.a = self.c;
-            }
-            0x7A => { // LD A, D
-                self.a = self.d;
-            }
-            0x7B => { // LD A, E
-                self.a = self.e;
-            }
-            0x7C => { // LD A, H
-                self.a = self.h;
-            }
-            0x7D => { // LD A, L
-                self.a = self.l;
-            }
-            0x87 => { // ADD A, A
-                let (result, overflow) = self.a.overflowing_add(self.a);
-                self.a = result;
-
-                self.f = 0;
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if result == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.a & 0x0F) >= 0x08 {
-                    self.f |= 0x20;
-                }
-
-                // Set Carry Flag (bit 4): 1 if overflow occurred
-                if overflow {
-                    self.f |= 0x10;
-                }
-            }
-            0xC3 => { // JP nn
-                let addr = self.memory[self.pc as usize] as u16 |
-                           (self.memory[(self.pc + 1) as usize] as u16) << 8;
-                self.pc = addr;
-            }
-            0x01 => { // LD BC, nn
-                let low = self.memory[self.pc as usize];   // Low byte (memory[pc])
-                let high = self.memory[(self.pc + 1) as usize]; // High byte (memory[pc + 1])
-                self.b = high;
-                self.c = low;
-                self.pc += 2;
-            }
-            0x11 => { // LD DE, nn
-                let low = self.memory[self.pc as usize];
-                let high = self.memory[(self.pc + 1) as usize];
-                self.d = high;
-                self.e = low;
-                self.pc += 2;
-            }
-            0x21 => { // LD HL, nn
-                let low = self.memory[self.pc as usize];
-                let high = self.memory[(self.pc + 1) as usize];
-                self.h = high;
-                self.l = low;
-                self.pc += 2;
-            }
-            0x31 => { // LD SP, nn
-                let low = self.memory[self.pc as usize];
-                let high = self.memory[(self.pc + 1) as usize];
-                self.sp = ((high as u16) << 8) | (low as u16);
-                self.pc += 2;
-            }
-            0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 2; } // INC A
-            0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 2; } // INC B
-            0x0C => { self.c = self.increment_8bit_register(self.c); self.pc += 2; } // INC C
-            0x14 => { self.d = self.increment_8bit_register(self.d); self.pc += 2; } // INC D
-            0x1C => { self.e = self.increment_8bit_register(self.e); self.pc += 2; } // INC E
-            0x24 => { self.h = self.increment_8bit_register(self.h); self.pc += 2; } // INC H
-            0x2C => { self.l = self.increment_8bit_register(self.l); self.pc += 2; } // INC L
-
-            0x05 => { // DEC B
-                self.b = self.b.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.b == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.b & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x0D => { // DEC C
-                self.c = self.c.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.c == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.c & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x15 => { // DEC D
-                self.d = self.d.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.d == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.d & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x1D => { // DEC E
-                self.e = self.e.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.e == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.e & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x25 => { // DEC H
-                self.h = self.h.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.h == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.h & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x2D => { // DEC L
-                self.l = self.l.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.l == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.l & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x3D => { // DEC A
-                self.a = self.a.wrapping_sub(1);
-
-                self.f = 0x40; // Set Subtract Flag (bit 6)
-
-                // Set Zero Flag (bit 7): 1 if result is 0
-                if self.a == 0 {
-                    self.f |= 0x80;
-                }
-
-                // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-                if (self.a & 0x0F) == 0x00 {
-                    self.f |= 0x20;
-                }
-            }
-            0x03 => { // INC BC
-                let bc = ((self.b as u16) << 8) | self.c as u16;
-                let new_bc = bc.wrapping_add(1);
-                self.b = (new_bc >> 8) as u8;
-                self.c = (new_bc & 0xFF) as u8;
-
-                self.f = 0;
-                if new_bc == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x0B => { // DEC BC
-                let bc = ((self.b as u16) << 8) | self.c as u16;
-                let new_bc = bc.wrapping_sub(1);
-                self.b = (new_bc >> 8) as u8;
-                self.c = (new_bc & 0xFF) as u8;
-
-                self.f = 0x40; // Subtract flag
-                if new_bc == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x13 => { // INC DE
-                let de = ((self.d as u16) << 8) | self.e as u16;
-                let new_de = de.wrapping_add(1);
-                self.d = (new_de >> 8) as u8;
-                self.e = (new_de & 0xFF) as u8;
-
-                self.f = 0;
-                if new_de == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x1B => { // DEC DE
-                let de = ((self.d as u16) << 8) | self.e as u16;
-                let new_de = de.wrapping_sub(1);
-                self.d = (new_de >> 8) as u8;
-                self.e = (new_de & 0xFF) as u8;
-
-                self.f = 0x40; // Subtract flag
-                if new_de == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x23 => { // INC HL
-                let hl = ((self.h as u16) << 8) | self.l as u16;
-                let new_hl = hl.wrapping_add(1);
-                self.h = (new_hl >> 8) as u8;
-                self.l = (new_hl & 0xFF) as u8;
-
-                self.f = 0;
-                if new_hl == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x2B => { // DEC HL
-                let hl = ((self.h as u16) << 8) | self.l as u16;
-                let new_hl = hl.wrapping_sub(1);
-                self.h = (new_hl >> 8) as u8;
-                self.l = (new_hl & 0xFF) as u8;
-
-                self.f = 0x40; // Subtract flag
-                if new_hl == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x33 => { // INC SP
-                self.sp = self.sp.wrapping_add(1);
-                self.f = 0;
-                if self.sp == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            0x3B => { // DEC SP
-                self.sp = self.sp.wrapping_sub(1);
-                self.f = 0x40; // Subtract flag
-                if self.sp == 0 {
-                    self.f |= 0x80; // Zero flag
-                }
-            }
-            _ => {} // Unimplemented
+    // Helper method to assign 16-bit register from a u16
+    fn assign_16bit_register(&mut self, reg: Register16, value: u16) {
+        match reg {
+            Register16::BC => {
+                self.b = (value >> 8) as u8;   // High byte goes to `b`
+                self.c = (value & 0xFF) as u8; // Low byte goes to `c`
+            },
+            Register16::DE => {
+                self.d = (value >> 8) as u8;   // High byte goes to `d`
+                self.e = (value & 0xFF) as u8; // Low byte goes to `e`
+            },
+            Register16::HL => {
+                self.h = (value >> 8) as u8;   // High byte goes to `h`
+                self.l = (value & 0xFF) as u8; // Low byte goes to `l`
+            },
+            Register16::SP => self.sp = value, // sp is 16 bit so can be assigned directly
         }
     }
+
+    // Helper method for 8-bit add instructions
+    //TODO: fix flag updates
+    fn add_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
+        let (result, overflow) = reg1.overflowing_add(reg2);
+
+        self.f = 0;
+
+        // Set Zero Flag (bit 7): 1 if result is 0
+        if result == 0 {
+            self.f |= 0x80;
+        }
+
+        // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
+        if (self.a & 0x0F) >= 0x08 {
+            self.f |= 0x20;
+        }
+
+        // Set Carry Flag (bit 4): 1 if overflow occurred
+        if overflow {
+            self.f |= 0x10;
+        }
+
+        result
+    }
+
+    // Helper method to increment a 16-bit register and update flags
+    //TODO: Fix flag updates
+    fn increment_16_bit_register(
+        &mut self,
+        high_byte: u8,
+        low_byte: u8,
+        reg: Register16,
+    ) {
+        let value = ((high_byte as u16) << 8) | low_byte as u16;
+        let new_value = value.wrapping_add(1);
+
+        // Assign the updated value to the register.
+        self.assign_16bit_register(reg, new_value);
+
+        // Set flags: zero flag if new_value is 0.
+        self.f = 0;
+        if new_value == 0 {
+            self.f |= 0x80; // Assuming 0x80 represents the Zero Flag.
+        }
+    }
+
+    // Helper method to increment a 16-bit register and update flags
+    //TODO: Fix flag updates
+    fn decrement_16_bit_register(
+        &mut self,
+        high_byte: u8,
+        low_byte: u8,
+        reg: Register16,
+    ) {
+        let value = ((high_byte as u16) << 8) | low_byte as u16;
+        let new_value = value.wrapping_sub(1);
+
+        // Assign the updated value to the register.
+        self.assign_16bit_register(reg, new_value);
+
+        // Set flags: zero flag if new_value is 0.
+        self.f = 0;
+        if new_value == 0 {
+            self.f |= 0x80; // Assuming 0x80 represents the Zero Flag.
+        }
+    }
+
+    fn get_16_bit_operand(&mut self, index: u16) -> u16 {
+        self.memory[(index + 1) as usize] as u16 | (self.memory[(index + 2) as usize] as u16) << 8
+    }
+
+    
 }
