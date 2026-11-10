@@ -42,7 +42,9 @@ impl CPU {
         let opcode = self.memory[self.pc as usize];
 
         match opcode {
-            0x00 => { self.pc += 1} // NOP
+            0x00 => { self.pc += 1 } // NOP
+            0x10 => { self.pc += 1 } // STOP //TODO: Handle RESET
+            0x76 => { self.pc += 1 } // HALT //TODO: Interrupt/Reset
              
             // 8-bit load immediate instructions
             0x3E => { self.a = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD A, n
@@ -182,17 +184,17 @@ impl CPU {
         // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
         // Set Carry Flag (bit 4): 1 if overflow occurred
         // Clear Subtract Flag (bit 6)
-        self.f = 0;
+        self.f = 0; // clear all flags
 
-        if result == 0 {
+        if result == 0 { // set the 0 flag if needed
             self.f |= 0x80;
         }
 
-        if (reg1 & 0x0F) >= 0x08 {
+        if (reg1 & 0x0F) >= 0x08 { // set the half carry flag if needed
             self.f |= 0x20;
         }
 
-        if overflow {
+        if overflow { // set the carry flag if needed
             self.f |= 0x10;
         }
 
