@@ -388,7 +388,7 @@ impl CPU {
     }
 
     fn ld_memory_at_bc_from_a(&mut self) {
-        let addr = ((self.b as u16) << 8 | self.c as u16);
+        let addr = (self.b as u16) << 8 | self.c as u16;
         self.memory[addr as usize] = self.a;
     }
 
@@ -397,7 +397,7 @@ impl CPU {
     }
 
     fn ld_memory_at_de_from_a(&mut self) {
-        let addr = ((self.d as u16) << 8 | self.e as u16);
+        let addr = (self.d as u16) << 8 | self.e as u16;
         self.memory[addr as usize] = self.a;
     }
 
@@ -416,13 +416,14 @@ impl CPU {
     }
 
     fn ld_memory_at_hl_from_d8(&mut self) {
-        let val = self.memory[(self.pc as usize) + 1];
-        self.h = (val >> 8) as u8;
-        self.l = (val & 0xFF) as u8;
+        let hl = ((self.h as u16) << 8) | self.l as u16;
+        let val = self.memory[self.pc as usize];
+        self.memory[hl as usize] = val;
+        self.pc = self.pc.wrapping_add(1);
     }
 
     fn ld_reg_from_hl(&mut self, reg: Register8) {
-        let addr = ((self.h as u16) << 8 | self.l as u16);
+        let addr = (self.h as u16) << 8 | self.l as u16;
         let val = self.memory[addr as usize];
         match reg {
             Register8::A => self.a = val,
@@ -438,3 +439,8 @@ impl CPU {
     fn ld_d_from_a(&mut self) {
         self.d = self.a;
     }
+
+    fn get_16_bit_operand(&mut self, index: u16) -> u16 {                                                                                                                                        
+        self.memory[(index + 1) as usize] as u16 | (self.memory[(index + 2) as usize] as u16) << 8
+    }
+}
