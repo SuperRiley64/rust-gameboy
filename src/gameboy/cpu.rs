@@ -58,7 +58,7 @@ impl CPU {
             0x10 => { self.pc += 1 } // STOP //TODO: Handle RESET
             0x76 => { self.pc += 1 } // HALT //TODO: Interrupt/Reset
              
-            // 8-bit load immediate instructions
+            // 8-bit transfer instructions
             0x3E => { self.a = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD A, n
             0x06 => { self.b = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD B, n
             0x0E => { self.c = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD C, n
@@ -66,6 +66,25 @@ impl CPU {
             0x1E => { self.e = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD E, n
             0x26 => { self.h = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD H, n
             0x2E => { self.l = self.memory[(self.pc as usize) + 1]; self.pc += 2; } // LD L, n
+
+            0xFA => { self.ld_a_from_a16(); self.pc += 3; } // LD A, (a16)
+            0xF0 => { self.ld_a_from_a8(); self.pc += 2; } // LD A, (a8)
+            0x1A => { self.ld_a_from_de(); self.pc += 3; } // LD A, (DE)
+            0x3A => { self.ld_a_from_hl_minus(); self.pc += 3; } // LD A, (HL-)
+            0x2A => { self.ld_a_from_hl_plus(); self.pc += 3; } // LD A, (HL+)
+            0x12 => { self.ld_memory_at_de_from_a(); self.pc += 1; } // LD (DE), A
+            0x32 => { self.ld_memory_at_hl_minus_from_a(); self.pc += 3; } // LD (HL-), A
+            0xEA => { self.ld_memory_at_a16_from_a(); self.pc += 3; } // LD (a16), A
+            0xE2 => { self.ld_memory_at_c_from_a(); self.pc += 1; } // LD (C), A
+            0xE0 => { self.ld_memory_at_a8_from_a(); self.pc += 2; } // LD (a8), A
+            0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc += 3; } // LD (HL+), A
+            0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; } // LD (HL), d8
+            0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; } // LD A, (HL)
+            0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; } // LD B, (HL)
+            0x56 => { self.ld_reg_from_hl(Register8::D); self.pc += 1; } // LD D, (HL)
+            0x5E => { self.ld_reg_from_hl(Register8::E); self.pc += 1; } // LD E, (HL)
+            0x66 => { self.ld_reg_from_hl(Register8::H); self.pc += 1; } // LD H, (HL)
+            0x6E => { self.ld_reg_from_hl(Register8::L); self.pc += 1; } // LD L, (HL)
 
             // 16-bit load immediate instructions
             0x01 => { let val = self.get_16_bit_operand(self.sp); self.assign_16bit_register(Register16::BC, val); self.pc += 3; } // LD BC, nn
@@ -317,9 +336,97 @@ impl CPU {
         }
     }
 
-    fn get_16_bit_operand(&mut self, index: u16) -> u16 {                                                                                                                                        
-        self.memory[(index + 1) as usize] as u16 | (self.memory[(index + 2) as usize] as u16) << 8
+    fn ld_a_from_a16(&mut self) {
+        self.a = self.memory[self.get_16_bit_operand(self.pc) as usize];
     }
 
-    
-}
+    fn ld_a_from_a8(&mut self) {
+        self.a = self.memory[(self.pc as usize) + 1];
+    }
+
+    fn ld_a_from_bc(&mut self) {
+        self.a = self.memory[((self.b as u16) << 8 | self.c as u16) as usize];
+    }
+
+    fn ld_a_from_c(&mut self) {
+        self.a = self.memory[self.c as usize];
+    }
+
+    fn ld_a_from_de(&mut self) {
+        self.a = self.memory[((self.d as u16) << 8 | self.e as u16) as usize];
+    }
+
+    fn ld_a_from_hl_minus(&mut self) {
+        let addr = ((self.h as u16) << 8 | self.l as u16) - 1;
+        self.a = self.memory[addr as usize];
+        self.h = (addr >> 8) as u8;
+        self.l = (addr & 0xFF) as u8;
+    }
+
+    fn ld_a_from_hl_plus(&mut self) {
+        let addr = ((self.h as u16) << 8 | self.l as u16) + 1;
+        self.a = self.memory[addr as usize];
+        self.h = (addr >> 8) as u8;
+        self.l = (addr & 0xFF) as u8;
+    }
+
+    fn ld_memory_at_a16_from_a(&mut self) {
+        let addr = self.get_16_bit_operand(self.pc);
+        self.memory[addr as usize] = self.a;
+    }
+
+    fn ld_memory_at_a8_from_a(&mut self) {
+        self.memory[(self.pc as usize) + 1] = self.a;
+    }
+
+    fn ld_memory_at_bc_from_a(&mut self) {
+        let addr = ((self.b as u16) << 8 | self.c as u16);
+        self.memory[addr as usize] = self.a;
+    }
+
+    fn ld_memory_at_c_from_a(&mut self) {
+        self.memory[self.c as usize] = self.a;
+    }
+
+    fn ld_memory_at_de_from_a(&mut self) {
+        let addr = ((self.d as u16) << 8 | self.e as u16);
+        self.memory[addr as usize] = self.a;
+    }
+
+    fn ld_memory_at_hl_minus_from_a(&mut self) {
+        let addr = ((self.h as u16) << 8 | self.l as u16) - 1;
+        self.memory[addr as usize] = self.a;
+        self.h = (addr >> 8) as u8;
+        self.l = (addr & 0xFF) as u8;
+    }
+
+    fn ld_memory_at_hl_plus_from_a(&mut self) {
+        let addr = ((self.h as u16) << 8 | self.l as u16) + 1;
+        self.memory[addr as usize] = self.a;
+        self.h = (addr >> 8) as u8;
+        self.l = (addr & 0xFF) as u8;
+    }
+
+    fn ld_memory_at_hl_from_d8(&mut self) {
+        let val = self.memory[(self.pc as usize) + 1];
+        self.h = (val >> 8) as u8;
+        self.l = (val & 0xFF) as u8;
+    }
+
+    fn ld_reg_from_hl(&mut self, reg: Register8) {
+        let addr = ((self.h as u16) << 8 | self.l as u16);
+        let val = self.memory[addr as usize];
+        match reg {
+            Register8::A => self.a = val,
+            Register8::B => self.b = val,
+            Register8::C => self.c = val,
+            Register8::D => self.d = val,
+            Register8::E => self.e = val,
+            Register8::H => self.h = val,
+            Register8::L => self.l = val,
+        }
+    }
+
+    fn ld_d_from_a(&mut self) {
+        self.d = self.a;
+    }
