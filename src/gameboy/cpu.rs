@@ -69,10 +69,15 @@ impl CPU {
 
             0xFA => { self.ld_a_from_a16(); self.pc += 3; } // LD A, (a16)
             0xF0 => { self.ld_a_from_a8(); self.pc += 2; } // LD A, (a8)
+            0xF2 => { self.ld_a_from_c_high(); self.pc += 1; } // LD A, (C)
+            0x0A => { self.ld_a_from_bc(); self.pc += 1; } // LD A, (BC)
             0x1A => { self.ld_a_from_de(); self.pc += 3; } // LD A, (DE)
+
             0x3A => { self.ld_a_from_hl_minus(); self.pc += 3; } // LD A, (HL-)
             0x2A => { self.ld_a_from_hl_plus(); self.pc += 3; } // LD A, (HL+)
+            0x02 => { self.ld_memory_at_bc_from_a(); self.pc += 1; } // LD (BC), A
             0x12 => { self.ld_memory_at_de_from_a(); self.pc += 1; } // LD (DE), A
+
             0x32 => { self.ld_memory_at_hl_minus_from_a(); self.pc += 3; } // LD (HL-), A
             0xEA => { self.ld_memory_at_a16_from_a(); self.pc += 3; } // LD (a16), A
             0xE2 => { self.ld_memory_at_c_from_a(); self.pc += 1; } // LD (C), A
@@ -163,7 +168,7 @@ impl CPU {
             // Jump instructions
             0xC3 => {self.pc = self.get_16_bit_operand(self.sp)} // JP nn
 
-            // 8-bit increment instructions
+            // increment/decrement instructions
             0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; } // INC A
             0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 1; } // INC B
             0x0C => { self.c = self.increment_8bit_register(self.c); self.pc += 1; } // INC C
@@ -172,7 +177,6 @@ impl CPU {
             0x24 => { self.h = self.increment_8bit_register(self.h); self.pc += 1; } // INC H
             0x2C => { self.l = self.increment_8bit_register(self.l); self.pc += 1; } // INC L
 
-            // 8-bit decrement instructions
             0x3D => { self.a = self.decrement_8bit_register(self.a); self.pc += 1; } // DEC A
             0x05 => { self.b = self.decrement_8bit_register(self.b); self.pc += 1; } // DEC B
             0x0D => { self.c = self.decrement_8bit_register(self.c); self.pc += 1; } // DEC C
@@ -181,13 +185,11 @@ impl CPU {
             0x25 => { self.h = self.decrement_8bit_register(self.h); self.pc += 1; } // DEC H
             0x2D => { self.l = self.decrement_8bit_register(self.l); self.pc += 1; } // DEC L
 
-            // 16-bit increment instructions
             0x03 => { self.increment_16_bit_register(self.b, self.c, Register16::BC); self.pc += 2; } // INC BC
             0x13 => { self.increment_16_bit_register(self.d, self.e, Register16::DE); self.pc += 2; } // INC DE
             0x23 => { self.increment_16_bit_register(self.h, self.l, Register16::HL); self.pc += 2; } // INC HL
             0x33 => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.increment_16_bit_register(high, low, Register16::SP); self.pc += 2; } // INC SP
 
-            // 16-bit decrement instructions
             0x0B => { self.decrement_16_bit_register(self.b, self.c, Register16::BC); self.pc += 2; } // DEC BC
             0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc += 2; } // DEC DE
             0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 2; } // DEC HL
@@ -362,6 +364,10 @@ impl CPU {
 
     fn ld_a_from_de(&mut self) {
         self.a = self.memory[((self.d as u16) << 8 | self.e as u16) as usize];
+    }
+
+    fn ld_a_from_c_high(&mut self) {
+        self.a = self.memory[(0xFF00 + self.c as u16) as usize];
     }
 
     fn ld_a_from_hl_minus(&mut self) {
