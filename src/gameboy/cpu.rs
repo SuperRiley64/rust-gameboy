@@ -78,8 +78,16 @@ impl CPU {
             0xE2 => { self.ld_memory_at_c_from_a(); self.pc += 1; } // LD (C), A
             0xE0 => { self.ld_memory_at_a8_from_a(); self.pc += 2; } // LD (a8), A
             0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc += 3; } // LD (HL+), A
-            0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; } // LD (HL), d8
+            0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; } // LD (HL), d8 
+            
+            0x70 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.b; self.pc += 1; } // LD (HL), B
+            0x71 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.c; self.pc += 1; } // LD (HL), C
+            0x72 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.d; self.pc += 1; } // LD (HL), D
+            0x73 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.e; self.pc += 1; } // LD (HL), E
+            0x74 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.h; self.pc += 1; } // LD (HL), H
+            0x75 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.l; self.pc += 1; } // LD (HL), L
             0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; } // LD A, (HL)
+
             0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; } // LD B, (HL)
             0x56 => { self.ld_reg_from_hl(Register8::D); self.pc += 1; } // LD D, (HL)
             0x5E => { self.ld_reg_from_hl(Register8::E); self.pc += 1; } // LD E, (HL)
