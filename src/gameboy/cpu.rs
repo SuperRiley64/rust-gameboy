@@ -55,7 +55,7 @@ impl CPU {
 
         match opcode {
             0x00 => { self.pc += 1 } // NOP
-            0x10 => { self.pc += 1 } // STOP //TODO: Handle RESET
+            0x10 => { self.pc += 2 } // STOP //TODO: Handle RESET
             0x76 => { self.pc += 1 } // HALT //TODO: Interrupt/Reset
              
             // 8-bit transfer instructions
@@ -69,8 +69,10 @@ impl CPU {
 
             0xFA => { self.ld_a_from_a16(); self.pc += 3; } // LD A, (a16)
             0xF0 => { self.ld_a_from_a8(); self.pc += 2; } // LD A, (a8)
+
             0xF2 => { self.ld_a_from_c_high(); self.pc += 1; } // LD A, (C)
-            0x0A => { self.ld_a_from_bc(); self.pc += 1; } // LD A, (BC)
+            0x0A => { self.ld_a_from_bc(); self.pc += 2; } // LD A, (BC)
+
             0x1A => { self.ld_a_from_de(); self.pc += 3; } // LD A, (DE)
 
             0x3A => { self.ld_a_from_hl_minus(); self.pc += 3; } // LD A, (HL-)
@@ -82,7 +84,8 @@ impl CPU {
             0xEA => { self.ld_memory_at_a16_from_a(); self.pc += 3; } // LD (a16), A
             0xE2 => { self.ld_memory_at_c_from_a(); self.pc += 1; } // LD (C), A
             0xE0 => { self.ld_memory_at_a8_from_a(); self.pc += 2; } // LD (a8), A
-            0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc += 3; } // LD (HL+), A
+            0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc += 2; } // LD (HL+), A
+
             0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; } // LD (HL), d8 
             
             0x70 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.b; self.pc += 1; } // LD (HL), B
@@ -91,6 +94,7 @@ impl CPU {
             0x73 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.e; self.pc += 1; } // LD (HL), E
             0x74 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.h; self.pc += 1; } // LD (HL), H
             0x75 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.l; self.pc += 1; } // LD (HL), L
+
             0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; } // LD A, (HL)
 
             0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; } // LD B, (HL)
@@ -351,7 +355,8 @@ impl CPU {
     }
 
     fn ld_a_from_a8(&mut self) {
-        self.a = self.memory[(self.pc as usize) + 1];
+        let addr = self.memory[(self.pc as usize) + 1] as usize;
+        self.a = self.memory[addr];
     }
 
     fn ld_a_from_bc(&mut self) {
@@ -423,9 +428,9 @@ impl CPU {
 
     fn ld_memory_at_hl_from_d8(&mut self) {
         let hl = ((self.h as u16) << 8) | self.l as u16;
-        let val = self.memory[self.pc as usize];
+        let val = self.memory[(self.pc as usize) + 1];
         self.memory[hl as usize] = val;
-        self.pc = self.pc.wrapping_add(1);
+        self.pc = self.pc.wrapping_add(2);
     }
 
     fn ld_reg_from_hl(&mut self, reg: Register8) {
