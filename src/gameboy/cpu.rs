@@ -30,7 +30,7 @@ pub struct CPU {
     pub sp: u16,
     pub pc: u16,
     pub memory: [u8; 0x10000],
-    cycles: u8
+    pub cycles: u8
 }
 
 impl CPU {
@@ -489,19 +489,6 @@ fn ld_memory_at_a8_from_a(&mut self) {
     fn ld_memory_at_de_from_a(&mut self) {
         let addr = (self.d as u16) << 8 | self.e as u16;
         self.memory[addr as usize] = self.a;
-    }
-
-    fn ld_a_to_hl_plus(&mut self) {
-        // 1. Get the current address from HL (the "location specified by register pair HL")
-        let current_addr = ((self.h as u16) << 8 | self.l as u16) as usize;
-
-        // 2. Store the contents of A into that memory location
-        self.memory[current_addr] = self.a;
-
-        // 3. Increment the contents of HL (the "simultaneously increment" part)
-        let new_addr = (current_addr as u16) + 1;
-        self.h = (new_addr >> 8) as u8;
-        self.l = (new_addr & 0xFF) as u8;
     }
 
     fn ld_memory_at_hl_plus_from_a(&mut self) {
