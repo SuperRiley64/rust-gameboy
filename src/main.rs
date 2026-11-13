@@ -132,7 +132,7 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.c = 0x30;
         cpu.memory[0] = 0xF2;
-        cpu.memory[0x30] = 0xDD;
+        cpu.memory[0xFF30] = 0xDD;
         execute_instruction_until_done(&mut cpu, 0xF2, vec![]);
         assert_eq!(cpu.a, 0xDD);
         assert_eq!(cpu.pc, 1);

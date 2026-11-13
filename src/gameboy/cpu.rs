@@ -53,9 +53,11 @@ impl CPU {
 
     // Runs the fetch decode execute cycle
     pub fn cycle(&mut self) {
-
+         println!("Cycle pc: {}", self.pc);
         if self.cycles == 0 {
             let opcode = self.memory[self.pc as usize]; 
+
+            // cycles is always the documented cycles minus 1.
             match opcode {
                 0x00 => { self.pc += 1; self.cycles = 0; } // NOP
                 0x10 => { self.pc += 2; self.cycles = 0; } // STOP //TODO: Handle RESET
