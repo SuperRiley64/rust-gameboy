@@ -53,10 +53,10 @@ impl CPU {
 
     // Runs the fetch decode execute cycle
     pub fn cycle(&mut self) {
-         println!("Cycle pc: {}", self.pc);
+        println!("Cycle pc: {}", self.pc);
         if self.cycles == 0 {
             let opcode = self.memory[self.pc as usize]; 
-
+                println!("    Running opcode: 0x{:02X}", opcode);
             // cycles is always the documented cycles minus 1.
             match opcode {
                 0x00 => { self.pc += 1; self.cycles = 0; } // NOP
@@ -411,8 +411,8 @@ impl CPU {
         // 1. Get the current address from HL
         let current_addr = ((self.h as u16) << 8 | self.l as u16) as usize;
 
-        // 2. Store the contents of A into that memory location (The "Store" part)
-        self.memory[current_addr] = self.a;
+        // 2. Store the contents of that memory location into A (the "Store" part)
+        self.a = self.memory[current_addr];
 
         // 3. Increment the contents of HL (The "Increment" part)
         let new_addr = (current_addr as u16) - 1;
@@ -446,8 +446,8 @@ impl CPU {
         // 1. Get the current address from HL
         let current_addr = ((self.h as u16) << 8 | self.l as u16) as usize;
 
-        // 2. Store the contents of A into that memory location (The "Store" part)
-        self.memory[current_addr] = self.a;
+        // 2. Store the contents of that memory location into A (the "Store" part)
+        self.a = self.memory[current_addr];
 
         // 3. Increment the contents of HL (The "Increment" part)
         let new_addr = (current_addr as u16) + 1;

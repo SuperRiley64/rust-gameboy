@@ -197,10 +197,8 @@ mod tests {
         cpu.b = 0x12;
         cpu.c = 0x00;
         cpu.memory[0] = 0x02;
-        cpu.memory[0x1200] = 0x11;
         execute_instruction_until_done(&mut cpu, 0x02, vec![]);
-        assert_eq!(cpu.b, 0x11);
-        assert_eq!(cpu.c, 0x11);
+        assert_eq!(cpu.memory[0x1200], 0x11);
         assert_eq!(cpu.pc, 1);
     }
 
@@ -211,10 +209,8 @@ mod tests {
         cpu.d = 0x34;
         cpu.e = 0x00;
         cpu.memory[0] = 0x12;
-        cpu.memory[0x3400] = 0x22;
         execute_instruction_until_done(&mut cpu, 0x12, vec![]);
-        assert_eq!(cpu.d, 0x22);
-        assert_eq!(cpu.e, 0x22);
+        assert_eq!(cpu.memory[0x3400], 0x22);
         assert_eq!(cpu.pc, 1);
     }
 
@@ -330,13 +326,13 @@ mod tests {
         // LD (HL), H
         cpu.h = 0xDD;
         execute_instruction_until_done(&mut cpu, 0x74, vec![]);
-        assert_eq!(cpu.memory[0x1220], 0xDD);
+        assert_eq!(cpu.memory[0xDD20], 0xDD);
         assert_eq!(cpu.pc, 5);
 
         // LD (HL), L
         cpu.l = 0xEE;
         execute_instruction_until_done(&mut cpu, 0x75, vec![]);
-        assert_eq!(cpu.memory[0x1220], 0xEE);
+        assert_eq!(cpu.memory[0xDDEE], 0xEE);
         assert_eq!(cpu.pc, 6);
     }
 
@@ -348,6 +344,7 @@ mod tests {
         cpu.h = 0x10;
         cpu.l = 0x20;
         cpu.memory[0x1020] = 0x33;
+        cpu.memory[0x3320] = 0x44;
 
         // LD A, (HL)
         execute_instruction_until_done(&mut cpu, 0x7E, vec![]);
@@ -376,7 +373,7 @@ mod tests {
 
         // LD L, (HL)
         execute_instruction_until_done(&mut cpu, 0x6E, vec![]);
-        assert_eq!(cpu.l, 0x33);
+        assert_eq!(cpu.l, 0x44);
         assert_eq!(cpu.pc, 6);
     }
 
@@ -768,24 +765,24 @@ mod tests {
 
         // INC BC
         cpu.b = 0xFF;
-        cpu.c = 0x00;
+        cpu.c = 0xFF;
         execute_instruction_until_done(&mut cpu, 0x03, vec![]);
         assert_eq!(cpu.b, 0x00);
-        assert_eq!(cpu.c, 0x01);
+        assert_eq!(cpu.c, 0x00);
 
         // INC DE
         cpu.d = 0xFF;
-        cpu.e = 0x00;
+        cpu.e = 0xFF;
         execute_instruction_until_done(&mut cpu, 0x13, vec![]);
         assert_eq!(cpu.d, 0x00);
-        assert_eq!(cpu.e, 0x01);
+        assert_eq!(cpu.e, 0x00);
 
         // INC HL
         cpu.h = 0xFF;
-        cpu.l = 0x00;
+        cpu.l = 0xFF;
         execute_instruction_until_done(&mut cpu, 0x23, vec![]);
         assert_eq!(cpu.h, 0x00);
-        assert_eq!(cpu.l, 0x01);
+        assert_eq!(cpu.l, 0x00);
 
         // INC SP
         cpu.sp = 0x0000;
