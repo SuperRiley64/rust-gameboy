@@ -235,6 +235,9 @@ impl CPU {
                 0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 1; self.cycles = 1; } // DEC HL
                 0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc += 1; self.cycles = 1; }
                 
+                0x34 => { self.inc_memory_at_hl(); self.pc += 1; self.cycles = 2; } // INC (HL)
+                0x35 => { self.dec_memory_at_hl(); self.pc += 1; self.cycles = 2; } // DEC (HL)
+                
                 // 16-bit adds
                 0x09 => { self.add_16bit_to_hl(Register16::BC); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, BC
                 0x19 => { self.add_16bit_to_hl(Register16::DE); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, DE
@@ -246,9 +249,12 @@ impl CPU {
                 0x1F => { self.rra(); self.pc += 1; self.cycles = 0; } // RRA
                 
                 // Carry flag instructions
+                0x2F => { self.a = !self.a; self.f |= 0x60; self.pc += 1; self.cycles = 0; } // CPL
+                0x27 => { self.da_adjust(); self.pc += 1; self.cycles = 0; } // DAA
                 0x37 => { self.f = (self.f & 0x8F) | 0x10; self.pc += 1; self.cycles = 1; } // SCF (set the carry flag)
                 0x3F => { self.f = (self.f ^ 0x10) & 0x9F; self.pc += 1; self.cycles = 1; } // CCF (flip the carry flag)
-                
+                0x2F => { self.a = !self.a; self.f |= 0x60; self.pc += 1; self.cycles = 0; } // CPL
+
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
         } else {
@@ -707,5 +713,63 @@ impl CPU {
         let addr = self.get_16_bit_operand(self.pc);
         self.memory[addr as usize] = (self.sp & 0xFF) as u8;
         self.memory[(addr + 1) as usize] = (self.sp >> 8) as u8;
+    }
+
+    fn da_adjust(&mut self) {
+        if (self.a & 0x0F) > 9 || 
+           ((self.a & 0x0F) == 0x09 && (self.f & 0x10) != 0) || 
+           ((self.a & 0x0F) == 0x08 && (self.f & 0x10) != 0) {
+            self.a = self.a.wrapping_add(6);
+        }
+    }
+
+    fn inc_memory_at_hl(&mut self) {
+        let addr = ((self.h as u16) << 8) | self.l as u16;
+        let val = self.memory[addr as usize];
+        let result = val.wrapping_add(1);
+
+        // Preserve Carry flag (bit 4)
+        self.f &= 0x10;
+        // Update Zero flag (bit 7)
+        if result == 0 {
+            self.f |= 0x80;
+        } else {
+            self.f &= !0x80;
+        }
+        // Update Half-Carry flag (bit 5)
+        if (val & 0x0F) == 0x0F {
+            self.f |= 0x20;
+        } else {
+            self.f &= !0x20;
+        }
+        // Clear Subtract flag (bit 6)
+        self.f &= !0x40;
+
+        self.memory[addr as usize] = result;
+    }
+
+    fn dec_memory_at_hl(&mut self) {
+        let addr = ((self.h as u16) << 8) | self.l as u16;
+        let val = self.memory[addr as usize];
+        let result = val.wrapping_sub(1);
+
+        // Preserve Carry flag (bit 4)
+        self.f &= 0x10;
+        // Update Zero flag (bit 7)
+        if result == 0 {
+            self.f |= 0x80;
+        } else {
+            self.f &= !0x80;
+        }
+        // Update Half-Carry flag (bit 5)
+        if (val & 0x0F) == 0x00 {
+            self.f |= 0x20;
+        } else {
+            self.f &= !0x20;
+        }
+        // Set Subtract flag (bit 6)
+        self.f |= 0x40;
+
+        self.memory[addr as usize] = result;
     }
 }

@@ -1111,4 +1111,219 @@ mod tests {
         execute_instruction_until_done(&mut cpu, 0x3F, vec![]);
         assert_eq!(cpu.f, 0x1F);
     }
+
+    #[test]
+    fn test_daa() {
+        // Test Case 1: Lower 4 bits > 9
+        // A = 0x0A (0000 1010), F = 0x00 (No Carry). 
+        // Expected: A = 0x10 (0001 0000) because 0x0A > 9.
+        let mut cpu1 = CPU::new();
+        cpu1.a = 0x0A;
+        cpu1.f = 0x00;
+        cpu1.pc = 0x1000;
+        cpu1.memory[0x1000] = 0x27;
+        execute_instruction_until_done(&mut cpu1, 0x27, vec![]);
+        assert_eq!(cpu1.a, 0x10);
+
+        // Test Case 2: Lower 4 bits = 9, Carry = 1
+        // A = 0x09 (0000 1001), F = 0x10 (Carry set).
+        // Expected: A = 0x0F (0000 1111) because A=9 and Carry=1.
+        let mut cpu2 = CPU::new();
+        cpu2.a = 0x09;
+        cpu2.f = 0x10;
+        cpu2.pc = 0x1000;
+        cpu2.memory[0x1000] = 0x27;
+        execute_instruction_until_done(&mut cpu2, 0x27, vec![]);
+        assert_eq!(cpu2.a, 0x0F);
+
+        // Test Case 3: Lower 4 bits = 8, Carry = 1
+        // A = 0x08 (0000 1000), F = 0x10 (Carry set).
+        // Expected: A = 0x0E (0000 1110) because A=8 and Carry=1.
+        let mut cpu3 = CPU::new();
+        cpu3.a = 0x08;
+        cpu3.f = 0x10;
+        cpu3.pc = 0x1000;
+        cpu3.memory[0x1000] = 0x27;
+        execute_instruction_until_done(&mut cpu3, 0x27, vec![]);
+        assert_eq!(cpu3.a, 0x0E);
+
+        // Test Case 4: Lower 4 bits = 9, Carry = 0
+        // A = 0x09, F = 0x00.
+        // Expected: A = 0x09 (No adjustment).
+        let mut cpu4 = CPU::new();
+        cpu4.a = 0x09;
+        cpu4.f = 0x00;
+        cpu4.pc = 0x1000;
+        cpu4.memory[0x1000] = 0x27;
+        execute_instruction_until_done(&mut cpu4, 0x27, vec![]);
+        assert_eq!(cpu4.a, 0x09);
+
+        // Test Case 5: Lower 4 bits = 8, Carry = 0
+        // A = 0x08, F = 0x00.
+        // Expected: A = 0x08 (No adjustment).
+        let mut cpu5 = CPU::new();
+        cpu5.a = 0x08;
+        cpu5.f = 0x00;
+        cpu5.pc = 0x1000;
+        cpu5.memory[0x1000] = 0x27;
+        execute_instruction_until_done(&mut cpu5, 0x27, vec![]);
+        assert_eq!(cpu5.a, 0x08);
+    }
+
+    #[test]
+    fn test_cpl() {
+        // Test Case 1: Basic bit flip and flag setting
+        // A = 0xAA (1010 1010), F = 0x00
+        // After CPL: A = 0x55 (0101 0101), F = 0x60 (S and H set, Z and C preserved as 0)
+        let mut cpu1 = CPU::new();
+        cpu1.a = 0xAA;
+        cpu1.f = 0x00;
+        cpu1.pc = 0x1000;
+        cpu1.memory[0x1000] = 0x2F;
+        execute_instruction_until_done(&mut cpu1, 0x2F, vec![]);
+        assert_eq!(cpu1.a, 0x55);
+        assert_eq!(cpu1.f, 0x60);
+
+        // Test Case 2: Preserving already set Zero and Carry flags
+        // A = 0x55 (0101 0101), F = 0x90 (Z bit 7 and C bit 4 set)
+        // After CPL: A = 0xAA (1010 1010), F = 0xF0 (S and H set, Z and C preserved as 1)
+        let mut cpu2 = CPU::new();
+        cpu2.a = 0x55;
+        cpu2.f = 0x90;
+        cpu2.pc = 0x1000;
+        cpu2.memory[0x1000] = 0x2F;
+        execute_instruction_until_done(&mut cpu2, 0x2F, vec![]);
+        assert_eq!(cpu2.a, 0xAA);
+        assert_eq!(cpu2.f, 0xF0);
+
+        // Test Case 3: Preserving already set Half Carry flag
+        // A = 0xAA, F = 0x20 (H bit 5 set)
+        // After CPL: A = 0x55, F = 0x60 (S and H set/preserved, Z and C preserved as 0)
+        let mut cpu3 = CPU::new();
+        cpu3.a = 0xAA;
+        cpu3.f = 0x20;
+        cpu3.pc = 0x1000;
+        cpu3.memory[0x1000] = 0x2F;
+        execute_instruction_until_done(&mut cpu3, 0x2F, vec![]);
+        assert_eq!(cpu3.a, 0x55);
+        assert_eq!(cpu3.f, 0x60);
+    }
+
+    #[test]
+    fn test_inc_hl() {
+        // Test Case 1: Normal increment (no flag changes except S/H/Z)
+        // A = 0x00, F = 0x00, memory[0x0000] = 0x05
+        // After INC (HL): memory[0x0000] = 0x06, F = 0x00
+        let mut cpu1 = CPU::new();
+        cpu1.h = 0x00;
+        cpu1.l = 0x00;
+        cpu1.f = 0x00;
+        cpu1.memory[0x0000] = 0x05;
+        cpu1.pc = 0x1000;
+        cpu1.memory[0x1000] = 0x34;
+        execute_instruction_until_done(&mut cpu1, 0x34, vec![]);
+        assert_eq!(cpu1.memory[0x0000], 0x06);
+        assert_eq!(cpu1.f, 0x00);
+
+        // Test Case 2: Increment triggering Half-Carry (bit 5)
+        // memory[0x0000] = 0x0F
+        // After INC (HL): memory[0x0000] = 0x10, F = 0x20
+        let mut cpu2 = CPU::new();
+        cpu2.h = 0x00;
+        cpu2.l = 0x00;
+        cpu2.f = 0x00;
+        cpu2.memory[0x0000] = 0x0F;
+        cpu2.pc = 0x1000;
+        cpu2.memory[0x1000] = 0x34;
+        execute_instruction_until_done(&mut cpu2, 0x34, vec![]);
+        assert_eq!(cpu2.memory[0x0000], 0x10);
+        assert_eq!(cpu2.f, 0x20);
+
+        // Test Case 3: Increment triggering Zero flag (bit 7)
+        // memory[0x0000] = 0xFF
+        // After INC (HL): memory[0x0000] = 0x00, F = 0x80
+        let mut cpu3 = CPU::new();
+        cpu3.h = 0x00;
+        cpu3.l = 0x00;
+        cpu3.f = 0x00;
+        cpu3.memory[0x0000] = 0xFF;
+        cpu3.pc = 0x1000;
+        cpu3.memory[0x1000] = 0x34;
+        execute_instruction_until_done(&mut cpu3, 0x34, vec![]);
+        assert_eq!(cpu3.memory[0x0000], 0x00);
+        assert_eq!(cpu3.f, 0xA0);
+
+        // Test Case 4: Preserving Carry flag (bit 4)
+        // F = 0x10 (Carry set), memory[0x0000] = 0x01
+        // After INC (HL): memory[0x0000] = 0x02, F = 0x10
+        let mut cpu4 = CPU::new();
+        cpu4.h = 0x00;
+        cpu4.l = 0x00;
+        cpu4.f = 0x10;
+        cpu4.memory[0x0000] = 0x01;
+        cpu4.pc = 0x1000;
+        cpu4.memory[0x1000] = 0x34;
+        execute_instruction_until_done(&mut cpu4, 0x34, vec![]);
+        assert_eq!(cpu4.memory[0x0000], 0x02);
+        assert_eq!(cpu4.f, 0x10);
+    }
+
+    #[test]
+    fn test_dec_hl() {
+        // Test Case 1: Normal decrement
+        // F = 0x00, memory[0x0000] = 0x05
+        // After DEC (HL): memory[0x0000] = 0x04, F = 0x40 (Subtract set)
+        let mut cpu1 = CPU::new();
+        cpu1.h = 0x00;
+        cpu1.l = 0x00;
+        cpu1.f = 0x00;
+        cpu1.memory[0x0000] = 0x05;
+        cpu1.pc = 0x1000;
+        cpu1.memory[0x1000] = 0x35;
+        execute_instruction_until_done(&mut cpu1, 0x35, vec![]);
+        assert_eq!(cpu1.memory[0x0000], 0x04);
+        assert_eq!(cpu1.f, 0x40);
+
+        // Test Case 2: Decrement triggering Half-Carry (bit 5)
+        // memory[0x0000] = 0x00
+        // After DEC (HL): memory[0x0000] = 0xFF, F = 0x60 (Subtract and Half-Carry set)
+        let mut cpu2 = CPU::new();
+        cpu2.h = 0x00;
+        cpu2.l = 0x00;
+        cpu2.f = 0x00;
+        cpu2.memory[0x0000] = 0x00;
+        cpu2.pc = 0x1000;
+        cpu2.memory[0x1000] = 0x35;
+        execute_instruction_until_done(&mut cpu2, 0x35, vec![]);
+        assert_eq!(cpu2.memory[0x0000], 0xFF);
+        assert_eq!(cpu2.f, 0x60);
+
+        // Test Case 3: Decrement triggering Zero flag (bit 7)
+        // memory[0x0000] = 0x01
+        // After DEC (HL): memory[0x0000] = 0x00, F = 0xC0 (Subtract and Zero set)
+        let mut cpu3 = CPU::new();
+        cpu3.h = 0x00;
+        cpu3.l = 0x00;
+        cpu3.f = 0x00;
+        cpu3.memory[0x0000] = 0x01;
+        cpu3.pc = 0x1000;
+        cpu3.memory[0x1000] = 0x35;
+        execute_instruction_until_done(&mut cpu3, 0x35, vec![]);
+        assert_eq!(cpu3.memory[0x0000], 0x00);
+        assert_eq!(cpu3.f, 0xC0);
+
+        // Test Case 4: Preserving Carry flag (bit 4)
+        // F = 0x10 (Carry set), memory[0x0000] = 0x01
+        // After DEC (HL): memory[0x0000] = 0x00, F = 0xDC (Subtract, Zero, and Carry set)
+        let mut cpu4 = CPU::new();
+        cpu4.h = 0x00;
+        cpu4.l = 0x00;
+        cpu4.f = 0x10;
+        cpu4.memory[0x0000] = 0x01;
+        cpu4.pc = 0x1000;
+        cpu4.memory[0x1000] = 0x35;
+        execute_instruction_until_done(&mut cpu4, 0x35, vec![]);
+        assert_eq!(cpu4.memory[0x0000], 0x00);
+        assert_eq!(cpu4.f, 0xD0);
+    }
 }
