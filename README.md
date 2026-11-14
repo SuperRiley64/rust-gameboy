@@ -1,6 +1,9 @@
 # rust-gameboy
 Game Boy emulator project in Rust, vibecoded using gemma4:12b locally.
 
+## usage
+run `cargo test` to test the emulated CPU.
+
 ## main.rs 
 Currently runs tests on the Game Boy CPU.
 
