@@ -981,4 +981,134 @@ mod tests {
         assert_eq!(cpu.memory[0x5001], 0x12);
         assert_eq!(cpu.pc, 3);
     }
+
+    fn test_jr_s8() {
+        let mut cpu = setup_cpu();
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x18;
+        cpu.memory[0x1001] = 0xFF; // -1
+        execute_instruction_until_done(&mut cpu, 0x18, vec![0xFF]);
+        // PC should be 0x1000 + 2 - 1 = 0x1001
+        assert_eq!(cpu.pc, 0x1001);
+    }
+
+    #[test]
+    fn test_jr_z_s8_set() {
+        let mut cpu = setup_cpu();
+        cpu.f = 0x80; // Zero flag set
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x28;
+        cpu.memory[0x1001] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x28, vec![0x05]);
+        // PC should be 0x1000 + 2 + 5 = 0x1007
+        assert_eq!(cpu.pc, 0x1007);
+    }
+
+    #[test]
+    fn test_jr_z_s8_clear() {
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // Zero flag clear
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x28;
+        cpu.memory[0x1001] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x28, vec![0x05]);
+        // PC should be 0x1000 + 2 = 0x1002
+        assert_eq!(cpu.pc, 0x1002);
+    }
+
+    #[test]
+    fn test_jr_nz_s8_set() {
+        let mut cpu = setup_cpu();
+        cpu.f = 0x80; // Zero flag set
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x20;
+        cpu.memory[0x1001] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x20, vec![0x05]);
+        // PC should be 0x1000 + 2 = 0x1002
+        assert_eq!(cpu.pc, 0x1002);
+    }
+
+    #[test]
+    fn test_jr_nz_s8_clear() {
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // Zero flag clear
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x20;
+        cpu.memory[0x1001] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x20, vec![0x05]);
+        // PC should be 0x1000 + 2 + 5 = 0x1007
+        assert_eq!(cpu.pc, 0x1007);
+    }
+
+    #[test]
+    fn test_jr_c_s8_set() {
+        let mut cpu = setup_cpu();
+        cpu.f = 0x10; // carry flag set
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x38;
+        cpu.memory[0x1001] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x38, vec![0x05]);
+        // PC should be 0x1000 + 2 + 5 = 0x1007
+        assert_eq!(cpu.pc, 0x1007);
+    }
+
+    #[test]
+    fn test_jr_c_s8_clear() {
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // carry flag clear
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x38;
+        cpu.memory[0x1001] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x38, vec![0x05]);
+        // PC should be 0x1000 + 2 = 0x1002
+        assert_eq!(cpu.pc, 0x1002);
+    }
+
+    #[test]
+    fn test_scf() {
+        let mut cpu = setup_cpu();
+        // Initial state: all bits set (0xFF)
+        // Expected result: Bit 7 preserved (1), Bit 4 set (1), Bits 5-6 cleared (0), Bits 0-3 preserved (1)
+        // Binary: 1001 1111 => 0x9F
+        cpu.f = 0xFF;
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x37;
+        execute_instruction_until_done(&mut cpu, 0x37, vec![]);
+        assert_eq!(cpu.f, 0x9F);
+
+        // Test with different initial bits to ensure 0-3 and 7 are truly preserved
+        // Initial state: Bit 7 = 1, Bits 0-3 = 0, Bits 4-6 = 1 (0x78)
+        // Expected result: Bit 7 preserved (1), Bit 4 set (1), Bits 5-6 cleared (0), Bits 0-3 preserved (0)
+        // Binary: 1001 0000 => 0x90
+        cpu.f = 0b11110000;
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x37;
+        execute_instruction_until_done(&mut cpu, 0x37, vec![]);
+        assert_eq!(cpu.f, 0x90);
+    }
+
+    #[test]
+    fn test_ccf_with_preservation() {
+        let mut cpu = setup_cpu();
+        
+        // Test Case: Bit 4 is 1, Bits 5 & 6 are 1, Bit 7 is 1, Bits 0-3 are 1 (0x18)
+        // Initial f = 0xF8 (1111 1000). Bit 3 is 1.
+        // After CCF: Bit 4 flips to 0, Bits 5 & 6 clear to 0, Bit 7 remains 1, Bits 0-3 remain 1.
+        // Expected: 1000 1000 => 0x88
+        cpu.f = 0xF8;
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x3F;
+        execute_instruction_until_done(&mut cpu, 0x3F, vec![]);
+        assert_eq!(cpu.f, 0x88);
+
+        // Test Case: Bit 4 is 0, Bits 5 & 6 are 1, Bit 7 is 0, Bits 0-3 are 1 (0x0F)
+        // Initial f = 0x7F (0110 1111).
+        // After CCF: Bit 4 flips to 1, Bits 5 & 6 clear to 0, Bit 7 remains 0, Bits 0-3 remain 1.
+        // Expected: 0001 1111 => 0x1F
+        cpu.f = 0b01001111;
+        cpu.pc = 0x1000;
+        cpu.memory[0x1000] = 0x3F;
+        execute_instruction_until_done(&mut cpu, 0x3F, vec![]);
+        assert_eq!(cpu.f, 0x1F);
+    }
 }

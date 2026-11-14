@@ -173,6 +173,39 @@ impl CPU {
                 0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0;} // ADD A, A
                 
                 // Jump instructions
+                0x18 => { self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
+                0x20 => {
+                    if (self.f & 0x80) == 0 { // zero flag
+                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
+                    } else {
+                        self.pc += 2;
+                    }
+                    self.cycles = 2;
+                } // JR NZ s8
+                0x30 => {
+                    if (self.f & 0x10) == 0 { // carry flag
+                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
+                    } else {
+                        self.pc += 2;
+                    }
+                    self.cycles = 2;
+                } // JR NC s8
+                0x28 => {
+                    if (self.f & 0x80) == 0x80 { // zero flag
+                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
+                    } else {
+                        self.pc += 2;
+                    }
+                    self.cycles = 2;
+                } // JR Z s8
+                0x38 => {
+                    if (self.f & 0x10) == 0x10 { // carry flag
+                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
+                    } else {
+                        self.pc += 2;
+                    }
+                    self.cycles = 2;
+                } // JR C s8
                 0xC3 => {self.jump_nn(); self.cycles = 2;} // JP nn
                 
                 // increment/decrement instructions
@@ -212,7 +245,9 @@ impl CPU {
                 0x0F => { self.rrca(); self.pc += 1; self.cycles = 0; } // RRCA
                 0x1F => { self.rra(); self.pc += 1; self.cycles = 0; } // RRA
                 
-                //TODO: add new instructions here
+                // Carry flag instructions
+                0x37 => { self.f = (self.f & 0x8F) | 0x10; self.pc += 1; self.cycles = 1; } // SCF (set the carry flag)
+                0x3F => { self.f = (self.f ^ 0x10) & 0x9F; self.pc += 1; self.cycles = 1; } // CCF (flip the carry flag)
                 
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
@@ -399,18 +434,23 @@ impl CPU {
         // Byte at (pc + 2) is the higher-order byte (bits 8-15)
         let low_byte = self.memory[self.pc as usize + 1] as u16;
         let high_byte = self.memory[self.pc as usize + 2] as u16;
-
+        
         // 2. Combine them into a 16-bit address
         // Shift high_byte left by 8 bits and combine with low_byte
         let target_address = (high_byte << 8) | low_byte;
-
+        
         // 3. Update the Program Counter
         // The PC now points directly to the start of the new instruction.
         self.pc = target_address as u16;
-
+        
         // Note: We do NOT do self.pc += 3 here. 
         // The jump instruction's job is to move the PC to the new location.
         // If you added 3, you would skip the first 3 bytes of the target instruction.
+    }
+
+    fn jump_relative_s8(&mut self, s8: i8) {
+        let offset = s8 as i32;
+        self.pc = (self.pc as i32 + 2 + offset) as u16;
     }
 
     fn rla(&mut self) {
