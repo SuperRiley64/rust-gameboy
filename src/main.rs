@@ -828,6 +828,82 @@ mod tests {
     }
 
     #[test]
+    fn test_rlca() {
+        let mut cpu = setup_cpu();
+        // Test bit 7 to CY and bit 0
+        cpu.a = 0x80;
+        execute_instruction_until_done(&mut cpu, 0x07, vec![]);
+        assert_eq!(cpu.a, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        // Test bit 0 to bit 1
+        cpu.a = 0x01;
+        execute_instruction_until_done(&mut cpu, 0x07, vec![]);
+        assert_eq!(cpu.a, 0x02);
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+    }
+
+    #[test]
+    fn test_rla() {
+        let mut cpu = setup_cpu();
+        // Test CY to bit 0, bit 7 discarded
+        cpu.a = 0x80;
+        cpu.f = 0x10; // Carry set
+        execute_instruction_until_done(&mut cpu, 0x17, vec![]);
+        assert_eq!(cpu.a, 0x01);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry unchanged
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+
+        // Test CY clear, bit 0 remains 0
+        cpu.a = 0x01;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x17, vec![]);
+        assert_eq!(cpu.a, 0x02);
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry unchanged
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+    }
+
+    #[test]
+    fn test_rrca() {
+        let mut cpu = setup_cpu();
+        // Test bit 0 to CY and bit 7
+        cpu.a = 0x01;
+        execute_instruction_until_done(&mut cpu, 0x0F, vec![]);
+        assert_eq!(cpu.a, 0x80);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+
+        // Test bit 7 to bit 6
+        cpu.a = 0x80;
+        execute_instruction_until_done(&mut cpu, 0x0F, vec![]);
+        assert_eq!(cpu.a, 0x40);
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+    }
+
+    #[test]
+    fn test_rra() {
+        let mut cpu = setup_cpu();
+        // Test CY to bit 7, bit 0 discarded
+        cpu.a = 0x01;
+        cpu.f = 0x10; // Carry set
+        execute_instruction_until_done(&mut cpu, 0x1F, vec![]);
+        assert_eq!(cpu.a, 0x80);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry unchanged
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+
+        // Test CY clear, bit 7 remains 0
+        cpu.a = 0x80;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x1F, vec![]);
+        assert_eq!(cpu.a, 0x40);
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry unchanged
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+    }
+
+    #[test]
     fn test_16bit_hl_adds() {
         let mut cpu = setup_cpu();
 

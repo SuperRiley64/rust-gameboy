@@ -207,6 +207,12 @@ impl CPU {
                 0x19 => { self.add_16bit_to_hl(Register16::DE); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, DE
                 0x29 => { self.add_16bit_to_hl(Register16::HL); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, HL
                 0x39 => { self.add_16bit_to_hl(Register16::SP); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, SP
+                0x07 => { self.rlca(); self.pc += 1; self.cycles = 0; } // RLCA
+                0x17 => { self.rla(); self.pc += 1; self.cycles = 0; } // RLA
+                0x0F => { self.rrca(); self.pc += 1; self.cycles = 0; } // RRCA
+                0x1F => { self.rra(); self.pc += 1; self.cycles = 0; } // RRA
+                
+                //TODO: add new instructions here
                 
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
@@ -405,6 +411,75 @@ impl CPU {
         // Note: We do NOT do self.pc += 3 here. 
         // The jump instruction's job is to move the PC to the new location.
         // If you added 3, you would skip the first 3 bytes of the target instruction.
+    }
+
+
+    fn rla(&mut self) {
+        let old_carry = (self.f & 0x10) != 0;
+        self.a = (self.a << 1) | (if old_carry { 1 } else { 0 });
+        
+        // Update flags
+        self.f = 0;
+        if self.a == 0 {
+            self.f |= 0x80; // Zero flag
+        }
+        if (self.a & 0x0F) == 0x0F {
+            self.f |= 0x20; // Half-carry flag
+        }
+        if old_carry {
+            self.f |= 0x10; // Carry flag (unchanged)
+        }
+    }
+
+    fn rrca(&mut self) {
+        let carry = (self.a & 0x01) != 0;
+        self.a = (self.a >> 1) | (self.a << 7);
+        
+        // Update flags
+        self.f = 0;
+        if self.a == 0 {
+            self.f |= 0x80; // Zero flag
+        }
+        if (self.a & 0x0F) == 0x0F {
+            self.f |= 0x20; // Half-carry flag
+        }
+        if carry {
+            self.f |= 0x10; // Carry flag
+        }
+    }
+
+    fn rra(&mut self) {
+        let old_carry = (self.f & 0x10) != 0;
+        self.a = (self.a >> 1) | (if old_carry { 0x80 } else { 0 });
+        
+        // Update flags
+        self.f = 0;
+        if self.a == 0 {
+            self.f |= 0x80; // Zero flag
+        }
+        if (self.a & 0x0F) == 0x0F {
+            self.f |= 0x20; // Half-carry flag
+        }
+        if old_carry {
+            self.f |= 0x10; // Carry flag (unchanged)
+        }
+    }
+
+    fn rlca(&mut self) {
+        let carry = (self.a & 0x80) != 0;
+        self.a = self.a << 1;
+        
+        // Update flags
+        self.f = 0;
+        if self.a == 0 {
+            self.f |= 0x80; // Zero flag
+        }
+        if (self.a & 0x0F) == 0x0F {
+            self.f |= 0x20; // Half-carry flag
+        }
+        if carry {
+            self.f |= 0x10; // Carry flag
+        }
     }
 
     fn ld_reg_to_reg(&mut self, src_reg: Register8, dest_reg: Register8) {
