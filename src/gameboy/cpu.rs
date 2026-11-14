@@ -201,6 +201,13 @@ impl CPU {
                 0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc += 1; self.cycles = 1; } // DEC DE
                 0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 1; self.cycles = 1; } // DEC HL
                 0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc += 1; self.cycles = 1; }
+
+                // 16-bit adds
+                0x09 => { self.add_16bit_to_hl(Register16::BC); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, BC
+                0x19 => { self.add_16bit_to_hl(Register16::DE); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, DE
+                0x29 => { self.add_16bit_to_hl(Register16::HL); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, HL
+                0x39 => { self.add_16bit_to_hl(Register16::SP); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, SP
+                
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
         } else {
@@ -306,8 +313,7 @@ impl CPU {
         result
     }
 
-    // Helper method to increment a 16-bit register and update flags
-    //TODO: Fix flag updates
+    // Helper method to increment a 16-bit register
     fn increment_16_bit_register(
         &mut self,
         high_byte: u8,
@@ -323,7 +329,7 @@ impl CPU {
         // 16-bit inc and dec on the SM83 do not modify flags.
     }
 
-    // Helper method to increment a 16-bit register
+    // Helper method to decrement a 16-bit register
     fn decrement_16_bit_register(
         &mut self,
         high_byte: u8,
@@ -337,6 +343,47 @@ impl CPU {
         self.assign_16bit_register(reg, new_value);
 
         // 16-bit inc and dec on the SM83 do not modify flags.
+    }
+
+    // Helper method to increment a 16-bit register
+    fn add_16bit_to_hl(&mut self, reg: Register16) {
+        let (src_high, src_low) = match reg {
+            Register16::BC => (self.b, self.c),
+            Register16::DE => (self.d, self.e),
+            Register16::HL => (self.h, self.l),
+            Register16::SP => ((self.sp >> 8) as u8, (self.sp & 0xFF) as u8),
+        };
+
+        let current_hl = ((self.h as u16) << 8) | (self.l as u16);
+        let source_val = ((src_high as u16) << 8) | (src_low as u16);
+        
+        let (result, overflow) = current_hl.overflowing_add(source_val);
+
+        // Calculate half-carry: carry from bit 3 to 4 of the low byte
+        let half_carry = ((current_hl & 0x0F) + (source_val & 0x0F)) > 0x0F;
+
+        // Update registers
+        self.assign_16bit_register(Register16::HL, result);
+
+        // Update flags
+        // Preserve zero flag (bit 7)
+        self.f &= 0x80;
+        // Clear subtract flag (bit 6)
+        self.f &= !0x40;
+
+        // Set carry flag (bit 4)
+        if overflow {
+            self.f |= 0x10;
+        } else {
+            self.f &= !0x10;
+        }
+
+        // Set half-carry flag (bit 5)
+        if half_carry {
+            self.f |= 0x20;
+        } else {
+            self.f &= !0x20;
+        }
     }
 
     fn jump_nn(&mut self) {

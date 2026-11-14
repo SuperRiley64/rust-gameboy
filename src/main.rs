@@ -826,4 +826,70 @@ mod tests {
         execute_instruction_until_done(&mut cpu, 0xC3, vec![0x20, 0x10]);
         assert_eq!(cpu.pc, 0x1020);
     }
+
+    #[test]
+    fn test_16bit_hl_adds() {
+        let mut cpu = setup_cpu();
+
+        // --- Test 0x09: ADD BC to HL, SP++ ---
+        // LD HL, 0x1000
+        cpu.memory[0] = 0x21;
+        execute_instruction_until_done(&mut cpu, 0x21, vec![0x00, 0x10]);
+        assert_eq!(cpu.h, 0x10);
+        assert_eq!(cpu.l, 0x00);
+
+        // LD BC, 0x2000
+        cpu.memory[3] = 0x01;
+        execute_instruction_until_done(&mut cpu, 0x01, vec![0x00, 0x20]);
+        assert_eq!(cpu.b, 0x20);
+        assert_eq!(cpu.c, 0x00);
+
+        // ADD BC to HL (0x09)
+        cpu.memory[6] = 0x09;
+        execute_instruction_until_done(&mut cpu, 0x09, vec![]);
+        assert_eq!(cpu.h, 0x30);
+        assert_eq!(cpu.l, 0x00);
+        assert_eq!(cpu.sp, 1);
+
+        // --- Test 0x19: ADD DE to HL ---
+        // LD DE, 0x3000
+        cpu.memory[7] = 0x11;
+        execute_instruction_until_done(&mut cpu, 0x11, vec![0x00, 0x30]);
+        assert_eq!(cpu.d, 0x30);
+        assert_eq!(cpu.e, 0x00);
+
+        // ADD DE to HL (0x19)
+        cpu.memory[10] = 0x19;
+        execute_instruction_until_done(&mut cpu, 0x19, vec![]);
+        // Expected: HL (0x1000) + DE (0x3000) = 0x4000
+        assert_eq!(cpu.h, 0x60);
+        assert_eq!(cpu.l, 0x00);
+
+        // --- Test 0x29: ADD HL to HL ---
+        // LD HL, 0x4000
+        cpu.memory[11] = 0x21;
+        execute_instruction_until_done(&mut cpu, 0x21, vec![0x00, 0x40]);
+        assert_eq!(cpu.h, 0x40);
+        assert_eq!(cpu.l, 0x00);
+
+        // ADD HL to HL (0x29)
+        cpu.memory[14] = 0x29;
+        execute_instruction_until_done(&mut cpu, 0x29, vec![]);
+        // Expected: HL (0x4000) + HL (0x4000) = 0x8000
+        assert_eq!(cpu.h, 0x80);
+        assert_eq!(cpu.l, 0x00);
+
+        // --- Test 0x39: ADD SP to HL ---
+        // LD SP, 0x5000
+        cpu.memory[15] = 0x31;
+        execute_instruction_until_done(&mut cpu, 0x31, vec![0x00, 0x50]);
+        assert_eq!(cpu.sp, 0x5000);
+
+        // ADD SP to HL (0x39)
+        cpu.memory[18] = 0x39;
+        execute_instruction_until_done(&mut cpu, 0x39, vec![]);
+        // Expected: HL (0x4000) + SP (0x5000) = 0x9000
+        assert_eq!(cpu.h, 0xD0);
+        assert_eq!(cpu.l, 0x00);
+    }
 }
