@@ -17,7 +17,6 @@ pub enum Register16{
     SP,
 }
 
-
 pub struct CPU {
     pub a: u8,
     pub f: u8,
@@ -71,25 +70,26 @@ impl CPU {
                 0x1E => { self.e = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD E, n
                 0x26 => { self.h = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD H, n
                 0x2E => { self.l = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD L, n
-
+                
                 0xFA => { self.ld_a_from_a16(); self.pc += 3; self.cycles = 3;} // LD A, (a16)
                 0xF0 => { self.ld_a_from_a8(); self.pc += 2; self.cycles = 2;} // LD A, (a8)
-
+                
                 0xF2 => { self.ld_a_from_c_high(); self.pc += 1; self.cycles = 1;} // LD A, (C)
                 0x0A => { self.ld_a_from_bc(); self.pc += 1; self.cycles = 1;} // LD A, (BC)
                 0x1A => { self.ld_a_from_de(); self.pc += 1; self.cycles = 1;} // LD A, (DE)
-
+                
                 0x2A => { self.ld_a_to_hl_plus(); self.pc += 1; self.cycles = 1;} // LD A, (HL+)
                 0x3A => { self.ld_a_to_hl_minus(); self.pc += 1; self.cycles = 1;} // LD A, (HL-)
                 0x02 => { self.ld_memory_at_bc_from_a(); self.pc += 1; self.cycles = 1;} // LD (BC), A
                 0x12 => { self.ld_memory_at_de_from_a(); self.pc += 1; self.cycles = 1;} // LD (DE), A
-
+                
                 0x32 => { self.ld_memory_at_hl_minus_from_a(); self.pc += 1; self.cycles = 1;} // LD (HL-), A
                 0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc += 1; self.cycles = 1;} // LD (HL+), A
+                0x08 => { self.ld_memory_at_a16_from_sp(); self.pc += 3; self.cycles = 4; } // LD (a16), SP
                 0xEA => { self.ld_memory_at_a16_from_a(); self.pc += 3; self.cycles = 3;} // LD (a16), A
                 0xE2 => { self.ld_memory_at_c_from_a(); self.pc += 1; self.cycles = 1;} // LD (C), A
                 0xE0 => { self.ld_memory_at_a8_from_a(); self.pc += 2; self.cycles = 2;} // LD (a8), A
-
+                
                 0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; self.cycles = 3;} // LD (HL), d8 
                 
                 0x70 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.b; self.pc += 1; self.cycles = 1; } // LD (HL), B
@@ -98,20 +98,20 @@ impl CPU {
                 0x73 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.e; self.pc += 1; self.cycles = 1; } // LD (HL), E
                 0x74 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.h; self.pc += 1; self.cycles = 1; } // LD (HL), H
                 0x75 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.l; self.pc += 1; self.cycles = 1; } // LD (HL), L
-
+                
                 0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; self.cycles = 1; } // LD A, (HL)
                 0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; self.cycles = 1; } // LD B, (HL)
                 0x56 => { self.ld_reg_from_hl(Register8::D); self.pc += 1; self.cycles = 1; } // LD D, (HL)
                 0x5E => { self.ld_reg_from_hl(Register8::E); self.pc += 1; self.cycles = 1; } // LD E, (HL)
                 0x66 => { self.ld_reg_from_hl(Register8::H); self.pc += 1; self.cycles = 1; } // LD H, (HL)
                 0x6E => { self.ld_reg_from_hl(Register8::L); self.pc += 1; self.cycles = 1; } // LD L, (HL)
-
+                
                 // 16-bit load immediate instructions
                 0x01 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::BC, val); self.pc += 3; self.cycles = 2; } // LD BC, nn
                 0x11 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::DE, val); self.pc += 3; self.cycles = 2; } // LD DE, nn
                 0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc += 3; self.cycles = 2; } // LD HL, nn
                 0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc += 3; self.cycles = 2; } // LD SP, nn
-
+                
                 // 8-bit load register instructions
                 0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, A
                 0x78 => { self.ld_reg_to_reg(Register8::B, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, B
@@ -120,7 +120,7 @@ impl CPU {
                 0x7B => { self.ld_reg_to_reg(Register8::E, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, E
                 0x7C => { self.ld_reg_to_reg(Register8::H, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, H
                 0x7D => { self.ld_reg_to_reg(Register8::L, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, L
-
+                
                 0x40 => { self.ld_reg_to_reg(Register8::B, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, B
                 0x47 => { self.ld_reg_to_reg(Register8::A, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, A
                 0x41 => { self.ld_reg_to_reg(Register8::C, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, C
@@ -128,7 +128,7 @@ impl CPU {
                 0x43 => { self.ld_reg_to_reg(Register8::E, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, E
                 0x44 => { self.ld_reg_to_reg(Register8::H, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, H
                 0x45 => { self.ld_reg_to_reg(Register8::L, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, L
-
+                
                 0x4F => { self.ld_reg_to_reg(Register8::A, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, A
                 0x48 => { self.ld_reg_to_reg(Register8::B, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, B
                 0x49 => { self.ld_reg_to_reg(Register8::C, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, C
@@ -136,7 +136,7 @@ impl CPU {
                 0x4B => { self.ld_reg_to_reg(Register8::E, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, E
                 0x4C => { self.ld_reg_to_reg(Register8::H, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, H
                 0x4D => { self.ld_reg_to_reg(Register8::L, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, L
-
+                
                 0x57 => { self.ld_reg_to_reg(Register8::A, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, A
                 0x50 => { self.ld_reg_to_reg(Register8::B, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, B
                 0x51 => { self.ld_reg_to_reg(Register8::C, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, C
@@ -144,7 +144,7 @@ impl CPU {
                 0x53 => { self.ld_reg_to_reg(Register8::E, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, E
                 0x54 => { self.ld_reg_to_reg(Register8::H, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, H
                 0x55 => { self.ld_reg_to_reg(Register8::L, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, L
-
+                
                 0x5F => { self.ld_reg_to_reg(Register8::A, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, A
                 0x58 => { self.ld_reg_to_reg(Register8::B, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, B
                 0x59 => { self.ld_reg_to_reg(Register8::C, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, C
@@ -152,7 +152,7 @@ impl CPU {
                 0x5B => { self.ld_reg_to_reg(Register8::E, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, E
                 0x5C => { self.ld_reg_to_reg(Register8::H, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, H
                 0x5D => { self.ld_reg_to_reg(Register8::L, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, L
-
+                
                 0x67 => { self.ld_reg_to_reg(Register8::A, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, A
                 0x60 => { self.ld_reg_to_reg(Register8::B, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, B
                 0x61 => { self.ld_reg_to_reg(Register8::C, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, C
@@ -160,7 +160,7 @@ impl CPU {
                 0x63 => { self.ld_reg_to_reg(Register8::E, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, E
                 0x64 => { self.ld_reg_to_reg(Register8::H, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, H
                 0x65 => { self.ld_reg_to_reg(Register8::L, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, L
-
+                
                 0x6F => { self.ld_reg_to_reg(Register8::A, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, A
                 0x68 => { self.ld_reg_to_reg(Register8::B, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, B
                 0x69 => { self.ld_reg_to_reg(Register8::C, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, C
@@ -168,13 +168,13 @@ impl CPU {
                 0x6B => { self.ld_reg_to_reg(Register8::E, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, E
                 0x6C => { self.ld_reg_to_reg(Register8::H, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, H
                 0x6D => { self.ld_reg_to_reg(Register8::L, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, L
-
+                
                 // 8-bit arithmetic instructions
                 0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0;} // ADD A, A
-
+                
                 // Jump instructions
                 0xC3 => {self.jump_nn(); self.cycles = 2;} // JP nn
-
+                
                 // increment/decrement instructions
                 0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // INC A
                 0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 1; self.cycles = 0; } // INC B
@@ -183,7 +183,7 @@ impl CPU {
                 0x1C => { self.e = self.increment_8bit_register(self.e); self.pc += 1; self.cycles = 0; } // INC E
                 0x24 => { self.h = self.increment_8bit_register(self.h); self.pc += 1; self.cycles = 0; } // INC H
                 0x2C => { self.l = self.increment_8bit_register(self.l); self.pc += 1; self.cycles = 0; } // INC L
-
+                
                 0x3D => { self.a = self.decrement_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // DEC A
                 0x05 => { self.b = self.decrement_8bit_register(self.b); self.pc += 1; self.cycles = 0; } // DEC B
                 0x0D => { self.c = self.decrement_8bit_register(self.c); self.pc += 1; self.cycles = 0; } // DEC C
@@ -191,17 +191,17 @@ impl CPU {
                 0x1D => { self.e = self.decrement_8bit_register(self.e); self.pc += 1; self.cycles = 0; } // DEC E
                 0x25 => { self.h = self.decrement_8bit_register(self.h); self.pc += 1; self.cycles = 0; } // DEC H
                 0x2D => { self.l = self.decrement_8bit_register(self.l); self.pc += 1; self.cycles = 0; } // DEC L
-
+                
                 0x03 => { self.increment_16_bit_register(self.b, self.c, Register16::BC); self.pc += 1; self.cycles = 1; } // INC BC
                 0x13 => { self.increment_16_bit_register(self.d, self.e, Register16::DE); self.pc += 1; self.cycles = 1; } // INC DE
                 0x23 => { self.increment_16_bit_register(self.h, self.l, Register16::HL); self.pc += 1; self.cycles = 1; } // INC HL
                 0x33 => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.increment_16_bit_register(high, low, Register16::SP); self.pc += 1; self.cycles = 1; } // INC SP
-
+                
                 0x0B => { self.decrement_16_bit_register(self.b, self.c, Register16::BC); self.pc += 1; self.cycles = 1; } // DEC BC
                 0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc += 1; self.cycles = 1; } // DEC DE
                 0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 1; self.cycles = 1; } // DEC HL
                 0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc += 1; self.cycles = 1; }
-
+                
                 // 16-bit adds
                 0x09 => { self.add_16bit_to_hl(Register16::BC); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, BC
                 0x19 => { self.add_16bit_to_hl(Register16::DE); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, DE
@@ -413,7 +413,6 @@ impl CPU {
         // If you added 3, you would skip the first 3 bytes of the target instruction.
     }
 
-
     fn rla(&mut self) {
         let old_carry = (self.f & 0x10) != 0;
         self.a = (self.a << 1) | (if old_carry { 1 } else { 0 });
@@ -582,7 +581,7 @@ impl CPU {
         self.memory[addr as usize] = self.a;
     }
 
-fn ld_memory_at_a8_from_a(&mut self) {
+    fn ld_memory_at_a8_from_a(&mut self) {
         // 1. Fetch the 8-bit immediate operand from the memory 
         //    located immediately after the current Program Counter.
         let immediate_value = self.memory[self.pc as usize + 1] as usize;
@@ -662,5 +661,11 @@ fn ld_memory_at_a8_from_a(&mut self) {
 
     fn get_16_bit_operand(&mut self, index: u16) -> u16 {                                                                                                                                        
         self.memory[(index + 1) as usize] as u16 | (self.memory[(index + 2) as usize] as u16) << 8
+    }
+
+    fn ld_memory_at_a16_from_sp(&mut self) {
+        let addr = self.get_16_bit_operand(self.pc);
+        self.memory[addr as usize] = (self.sp & 0xFF) as u8;
+        self.memory[(addr + 1) as usize] = (self.sp >> 8) as u8;
     }
 }

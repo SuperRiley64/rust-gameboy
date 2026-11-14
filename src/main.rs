@@ -968,4 +968,17 @@ mod tests {
         assert_eq!(cpu.h, 0xD0);
         assert_eq!(cpu.l, 0x00);
     }
+
+    #[test]
+    fn test_ld_a16_sp() {
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x1234;
+        cpu.memory[0] = 0x08;
+        cpu.memory[1] = 0x00;
+        cpu.memory[2] = 0x50;
+        execute_instruction_until_done(&mut cpu, 0x08, vec![0x00, 0x50]);
+        assert_eq!(cpu.memory[0x5000], 0x34);
+        assert_eq!(cpu.memory[0x5001], 0x12);
+        assert_eq!(cpu.pc, 3);
+    }
 }
