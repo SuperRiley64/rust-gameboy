@@ -92,6 +92,7 @@ impl CPU {
                 
                 0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; self.cycles = 3;} // LD (HL), d8 
                 
+                0x77 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.a; self.pc += 1; self.cycles = 1; } // LD (HL), A
                 0x70 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.b; self.pc += 1; self.cycles = 1; } // LD (HL), B
                 0x71 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.c; self.pc += 1; self.cycles = 1; } // LD (HL), C
                 0x72 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.d; self.pc += 1; self.cycles = 1; } // LD (HL), D
@@ -101,6 +102,7 @@ impl CPU {
                 
                 0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; self.cycles = 1; } // LD A, (HL)
                 0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; self.cycles = 1; } // LD B, (HL)
+                0x4E => { self.ld_reg_from_hl(Register8::C); self.pc += 1; self.cycles = 1; } // LD C, (HL)
                 0x56 => { self.ld_reg_from_hl(Register8::D); self.pc += 1; self.cycles = 1; } // LD D, (HL)
                 0x5E => { self.ld_reg_from_hl(Register8::E); self.pc += 1; self.cycles = 1; } // LD E, (HL)
                 0x66 => { self.ld_reg_from_hl(Register8::H); self.pc += 1; self.cycles = 1; } // LD H, (HL)
@@ -171,6 +173,13 @@ impl CPU {
                 
                 // 8-bit arithmetic instructions
                 0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0;} // ADD A, A
+                0x80 => { self.a = self.add_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // ADD A, B
+                0x81 => { self.a = self.add_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // ADD A, C
+                0x82 => { self.a = self.add_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // ADD A, D
+                0x83 => { self.a = self.add_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // ADD A, E
+                0x84 => { self.a = self.add_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADD A, H
+                0x85 => { self.a = self.add_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADD A, L
+                0x86 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.add_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // ADD A, (HL)
                 
                 // Jump instructions
                 0x18 => { self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
@@ -237,7 +246,7 @@ impl CPU {
                 
                 0x34 => { self.inc_memory_at_hl(); self.pc += 1; self.cycles = 2; } // INC (HL)
                 0x35 => { self.dec_memory_at_hl(); self.pc += 1; self.cycles = 2; } // DEC (HL)
-                
+
                 // 16-bit adds
                 0x09 => { self.add_16bit_to_hl(Register16::BC); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, BC
                 0x19 => { self.add_16bit_to_hl(Register16::DE); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, DE
@@ -338,24 +347,34 @@ impl CPU {
     //TODO: fix flag updates
     fn add_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
         let (result, overflow) = reg1.overflowing_add(reg2);
+        
+        // Preserve bits 0-3 of the flags register if your implementation requires it,
+        // otherwise, clearing them is usually acceptable.
+        self.f &= 0xF0; 
 
         // Set Zero Flag (bit 7): 1 if result is 0
-        // Set Half Carry Flag (bit 5): 1 if lower 4 bits caused carry
-        // Set Carry Flag (bit 4): 1 if overflow occurred
-        // Clear Subtract Flag (bit 6)
-        self.f = 0; // clear all flags
-
-        if result == 0 { // set the 0 flag if needed
+        if result == 0 {
             self.f |= 0x80;
+        } else {
+            self.f &= !0x80;
         }
-
-        if (reg1 & 0x0F) >= 0x08 { // set the half carry flag if needed
+        
+        // Set Half-Carry flag (bit 5): 1 if lower 4 bits caused carry
+        if (reg1 & 0x0F) + (reg2 & 0x0F) > 0x0F {
             self.f |= 0x20;
+        } else {
+            self.f &= !0x20;
         }
-
-        if overflow { // set the carry flag if needed
+        
+        // Set Carry Flag (bit 4): 1 if overflow occurred
+        if overflow {
             self.f |= 0x10;
+        } else {
+            self.f &= !0x10;
         }
+        
+        // Clear Subtract flag (bit 6)
+        self.f &= !0x40;
 
         result
     }

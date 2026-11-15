@@ -345,6 +345,7 @@ mod tests {
         cpu.l = 0x20;
         cpu.memory[0x1020] = 0x33;
         cpu.memory[0x3320] = 0x44;
+        cpu.memory[0x3344] = 0x55;
 
         // LD A, (HL)
         execute_instruction_until_done(&mut cpu, 0x7E, vec![]);
@@ -375,6 +376,11 @@ mod tests {
         execute_instruction_until_done(&mut cpu, 0x6E, vec![]);
         assert_eq!(cpu.l, 0x44);
         assert_eq!(cpu.pc, 6);
+
+        // LD C, (HL)
+        execute_instruction_until_done(&mut cpu, 0x46, vec![]);
+        assert_eq!(cpu.b, 0x55);
+        assert_eq!(cpu.pc, 7);
     }
 
     // --- 16-bit Load Immediates ---
@@ -682,6 +688,83 @@ mod tests {
         assert_eq!(cpu.f & 0x80, 0x00);
         assert_eq!(cpu.f & 0x10, 0x00);
         assert_eq!(cpu.f & 0x20, 0x00);
+
+        // ADD A, B
+        cpu.a = 0x05;
+        cpu.b = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x80, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-carry clear
+
+        // ADD A, C
+        cpu.a = 0x05;
+        cpu.c = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x81, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+
+        // ADD A, D
+        cpu.a = 0x05;
+        cpu.d = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x82, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+
+        // ADD A, E
+        cpu.a = 0x05;
+        cpu.e = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x83, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+
+        // ADD A, H
+        cpu.a = 0x05;
+        cpu.h = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x84, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+
+        // ADD A, L
+        cpu.a = 0x05;
+        cpu.l = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x85, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+
+        // Test flags for ADD A, L (Half-Carry and Carry)
+        cpu.a = 0x0F;
+        cpu.l = 0x01;
+        execute_instruction_until_done(&mut cpu, 0x85, vec![]);
+        assert_eq!(cpu.a, 0x10);
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+
+        // --- ADD A, (HL) ---
+        // Test Case: A = 0x02, (HL) = 0x1000, memory[0x1000] = 0x05
+        // Expected: A = 0x07, Flags = Clear
+        cpu.h = 0x10;
+        cpu.l = 0x00;
+        cpu.a = 0x02;
+        cpu.memory[0x1000] = 0x05;
+        execute_instruction_until_done(&mut cpu, 0x86, vec![]);
+        assert_eq!(cpu.a, 0x07);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-carry clear
+
+        // Test Case: Carry and Half-Carry flags
+        // A = 0x0F, (HL) = 0x1000, memory[0x1000] = 0x01
+        // Expected: A = 0x10, Half-Carry set
+        cpu.a = 0x0F;
+        cpu.memory[0x1000] = 0x01;
+        execute_instruction_until_done(&mut cpu, 0x86, vec![]);
+        assert_eq!(cpu.a, 0x10);
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
 
         // INC A
         cpu.a = 0x05;
@@ -1325,5 +1408,25 @@ mod tests {
         execute_instruction_until_done(&mut cpu4, 0x35, vec![]);
         assert_eq!(cpu4.memory[0x0000], 0x00);
         assert_eq!(cpu4.f, 0xD0);
+    }
+
+    #[test]
+    fn test_ld_hl_a() {
+        let mut cpu = setup_cpu();
+        
+        // Setup: Set HL to 0x1000 and A to 0xAA
+        cpu.h = 0x10;
+        cpu.l = 0x00;
+        cpu.a = 0xAA;
+        
+        // Ensure the target memory location is initially 0x00
+        cpu.memory[0x1000] = 0x00;
+
+        // Execute LD (HL), A
+        execute_instruction_until_done(&mut cpu, 0x77, vec![]);
+
+        // Assertions
+        assert_eq!(cpu.memory[0x1000], 0xAA); // Memory at 0x1000 should now be 0xAA
+        assert_eq!(cpu.pc, 1);                // PC should advance by 1
     }
 }
