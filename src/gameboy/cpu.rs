@@ -243,6 +243,16 @@ impl CPU {
                 0xBC => { _ = self.sub_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // CP A, H
                 0xBD => { _ = self.sub_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // CP A, L
                 0xBE => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; _ = self.sub_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // CP A, (HL)
+
+                // immediate arithmetic instructions
+                0xC6 => { self.a = self.add_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // ADD d8
+                0xCE => { self.a = self.adc_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // ADC d8
+                0xD6 => { self.a = self.sub_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // SUB d8
+                0xDE => { self.a = self.sbc_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // SBC d8
+                0xE6 => { self.a = self.and_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // AND d8
+                0xEE => { self.a = self.xor_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // XOR d8
+                0xF6 => { self.a = self.or_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // OR d8
+                0xFE => { _ = self.sub_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // CP d8
                 
                 // Jump instructions
                 0x18 => { self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8

@@ -1421,6 +1421,130 @@ mod tests {
     }
 
     #[test]
+    fn test_immediate_arithmetic_instructions() {
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xC6: ADD d8 ---
+        // A = 0xFE, d8 = 0x02
+        // Expected: A = 0x00, C=1, HC=1, Z=1
+        cpu.a = 0xFE;
+        cpu.memory[1] = 0x02; // Assuming PC is 0
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xC6, vec![]);
+        assert_eq!(cpu.a, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xCE: ADC d8 ---
+        // A = 0xFE, d8 = 0x01, Carry = 1
+        // Expected: A = 0x00, C=1, HC=1, Z=1
+        cpu.a = 0xFE;
+        cpu.memory[1] = 0x01;
+        cpu.f = 0x10; // Carry set
+        execute_instruction_until_done(&mut cpu, 0xCE, vec![]);
+        assert_eq!(cpu.a, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xD6: SUB d8 ---
+        // A = 0x00, d8 = 0x01
+        // Expected: A = 0xFF, C=1, HC=1, Z=0
+        cpu.a = 0x00;
+        cpu.memory[1] = 0x01;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xD6, vec![]);
+        assert_eq!(cpu.a, 0xFF);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set (negative result)
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xDE: SBC d8 ---
+        // A = 0x00, d8 = 0x01, Carry = 1
+        // Expected: A = 0xFE, C=1, HC=1, Z=0
+        cpu.a = 0x00;
+        cpu.memory[1] = 0x01;
+        cpu.f = 0x10; // Carry set
+        execute_instruction_until_done(&mut cpu, 0xDE, vec![]);
+        assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xE6: AND d8 ---
+        // A = 0xFF, d8 = 0x0F
+        // Expected: A = 0x0F, HC=1, C=0, S=0
+        cpu.a = 0xFF;
+        cpu.memory[1] = 0x0F;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xE6, vec![]);
+        assert_eq!(cpu.a, 0x0F);
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set (ALWAYS 1)
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.f & 0x40, 0x00); // Subtract clear
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xEE: XOR d8 ---
+        // A = 0xFF, d8 = 0xFF
+        // Expected: A = 0x00, HC=1, C=0, S=0
+        cpu.a = 0xFF;
+        cpu.memory[1] = 0xFF;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xEE, vec![]);
+        assert_eq!(cpu.a, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-Carry cleared
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.f & 0x40, 0x00); // Subtract clear
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xF6: OR d8 ---
+        // A = 0x0F, d8 = 0xF0
+        // Expected: A = 0xFF, HC=1, C=0, S=0
+        cpu.a = 0x0F;
+        cpu.memory[1] = 0xF0;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xF6, vec![]);
+        assert_eq!(cpu.a, 0xFF);
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-Carry cleared
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.f & 0x40, 0x00); // Subtract clear
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xFE: CP d8 ---
+        // Case 1: Equal
+        // A = 0x05, d8 = 0x05
+        // Expected: A = 0x05, Z=1
+        cpu.a = 0x05;
+        cpu.memory[1] = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xFE, vec![0x05]);
+        assert_eq!(cpu.a, 0x05);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        // Case 2: Not Equal
+        // A = 0x05, d8 = 0x06
+        // Expected: A = 0x05, Z=0
+        cpu.a = 0x05;
+        cpu.memory[1] = 0x06;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xFE, vec![0x06]);
+        assert_eq!(cpu.a, 0x05);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+    }
+
+    #[test]
     fn test_jump_instructions() {
         let mut cpu = setup_cpu();
         // JP nn
