@@ -1013,6 +1013,68 @@ mod tests {
     }
 
     #[test]
+    fn test_or() {
+        let mut cpu = setup_cpu();
+
+        // 0xB0: OR A, B
+        cpu.a = 0x00;
+        cpu.b = 0xFF;
+        execute_instruction_until_done(&mut cpu, 0xB0, vec![]);
+        assert_eq!(cpu.a, 0xFF);
+        assert_eq!(cpu.pc, 1);
+
+        // 0xB1: OR A, C
+        cpu.a = 0x00;
+        cpu.c = 0x55;
+        execute_instruction_until_done(&mut cpu, 0xB1, vec![]);
+        assert_eq!(cpu.a, 0x55);
+        assert_eq!(cpu.pc, 2);
+
+        // 0xB2: OR A, D
+        cpu.a = 0x00;
+        cpu.d = 0xAA;
+        execute_instruction_until_done(&mut cpu, 0xB2, vec![]);
+        assert_eq!(cpu.a, 0xAA);
+        assert_eq!(cpu.pc, 3);
+
+        // 0xB3: OR A, E
+        cpu.a = 0x00;
+        cpu.e = 0x33;
+        execute_instruction_until_done(&mut cpu, 0xB3, vec![]);
+        assert_eq!(cpu.a, 0x33);
+        assert_eq!(cpu.pc, 4);
+
+        // 0xB4: OR A, H
+        cpu.a = 0x00;
+        cpu.h = 0x11;
+        execute_instruction_until_done(&mut cpu, 0xB4, vec![]);
+        assert_eq!(cpu.a, 0x11);
+        assert_eq!(cpu.pc, 5);
+
+        // 0xB5: OR A, L
+        cpu.a = 0x00;
+        cpu.l = 0x22;
+        execute_instruction_until_done(&mut cpu, 0xB5, vec![]);
+        assert_eq!(cpu.a, 0x22);
+        assert_eq!(cpu.pc, 6);
+
+        // 0xB6: OR A, (HL)
+        cpu.h = 0x10;
+        cpu.l = 0x20;
+        cpu.a = 0x00;
+        cpu.memory[0x1020] = 0x44;
+        execute_instruction_until_done(&mut cpu, 0xB6, vec![]);
+        assert_eq!(cpu.a, 0x44);
+        assert_eq!(cpu.pc, 7);
+
+        // 0xB7: OR A, A
+        cpu.a = 0x55;
+        execute_instruction_until_done(&mut cpu, 0xB7, vec![]);
+        assert_eq!(cpu.a, 0x55);
+        assert_eq!(cpu.pc, 8);
+    }
+
+    #[test]
     fn test_add_inc_dec() {
         let mut cpu = setup_cpu();
         // ADD A, A

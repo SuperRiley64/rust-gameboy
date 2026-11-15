@@ -225,6 +225,15 @@ impl CPU {
                 0xAC => { self.a = self.xor_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // XOR A, H
                 0xAD => { self.a = self.xor_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // XOR A, L
                 0xAE => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.xor_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // XOR A, (HL)
+
+                0xB7 => { self.a = self.or_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // OR A, A
+                0xB0 => { self.a = self.or_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // OR A, B
+                0xB1 => { self.a = self.or_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // OR A, C
+                0xB2 => { self.a = self.or_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // OR A, D
+                0xB3 => { self.a = self.or_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // OR A, E
+                0xB4 => { self.a = self.or_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // OR A, H
+                0xB5 => { self.a = self.or_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // OR A, L
+                0xB6 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.or_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // OR A, (HL)
                 
                 // Jump instructions
                 0x18 => { self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
@@ -531,9 +540,35 @@ impl CPU {
         result
     }
 
-    // Helper method for 8-bit AND instructions
+    // Helper method for 8-bit XOR instructions
     fn xor_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
         let result = reg1 ^ reg2;
+
+        // Preserve bits 0-3 of the flags register
+        self.f &= 0xF0;
+
+        // Set Zero Flag (bit 7): 1 if result is 0
+        if result == 0 {
+            self.f |= 0x80;
+        } else {
+            self.f &= !0x80;
+        }
+
+        // Clear Half-Carry flag (bit 5):
+        self.f &= !0x20;
+
+        // Clear Carry Flag (bit 4)
+        self.f &= !0x10;
+
+        // Clear Subtract flag (bit 6)
+        self.f &= !0x40;
+
+        result
+    }
+
+    // Helper method for 8-bit OR instructions
+    fn or_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
+        let result = reg1 | reg2;
 
         // Preserve bits 0-3 of the flags register
         self.f &= 0xF0;
