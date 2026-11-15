@@ -679,7 +679,218 @@ mod tests {
     // --- Arithmetic Instructions ---
 
     #[test]
-    fn test_arithmetic_instructions() {
+    fn test_adc(){
+        let mut cpu = setup_cpu();
+        // --- ADC A, (reg) ---
+        // Test Case 0: ADC A, A
+        // A = 0x05, B = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.b = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x8F, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-carry clear
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.pc, 1);
+
+        let mut cpu = setup_cpu();
+        
+        // --- Case 1: Carry Cleared, No Overflow ---
+        // A = 0x05, HL = 0x0010, Memory[0x0010] = 0x02, CY = 0
+        cpu.a = 0x05;
+        cpu.h = 0x00;
+        cpu.l = 0x10;
+        cpu.f = 0x00; // CY = 0
+        cpu.memory[0x0010] = 0x02;
+        
+        execute_instruction_until_done(&mut cpu, 0x8E, vec![]);
+        
+        assert_eq!(cpu.a, 0x07);      // 0x05 + 0x02 + 0 = 0x07
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry cleared
+
+        // --- Case 2: Carry Set, No Overflow ---
+        // A = 0x05, HL = 0x0010, Memory[0x0010] = 0x02, CY = 1
+        cpu.a = 0x05;
+        cpu.h = 0x00;
+        cpu.l = 0x10;
+        cpu.f = 0x10; // CY = 1
+        cpu.memory[0x0010] = 0x02;
+        
+        execute_instruction_until_done(&mut cpu, 0x8E, vec![]);
+        
+        assert_eq!(cpu.a, 0x08);      // 0x05 + 0x02 + 1 = 0x08
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry cleared (no overflow)
+
+        // --- Case 3: Carry Set, Overflow ---
+        // A = 0xFE, HL = 0x0010, Memory[0x0010] = 0x01, CY = 1
+        cpu.a = 0xFE;
+        cpu.h = 0x00;
+        cpu.l = 0x10;
+        cpu.f = 0x10; // CY = 1
+        cpu.memory[0x0010] = 0x01;
+        
+        execute_instruction_until_done(&mut cpu, 0x8E, vec![]);
+        
+        assert_eq!(cpu.a, 0x00);      // 0xFE + 0x01 + 1 = 0x100 -> A = 0x00
+        assert_eq!(cpu.f & 0x10, 0x10); // Carry set (overflow)
+
+        let mut cpu = setup_cpu();
+
+        // Test Case 1: ADC A, B
+        // A = 0x05, B = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.b = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x88, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-carry clear
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.pc, 1);
+
+        // Test Case 2: ADC A, B with Carry and Half-Carry
+        // A = 0x0F, B = 0x01, CY = 1
+        // Expected: A = 0x11, Half-Carry set
+        cpu.a = 0x0F;
+        cpu.b = 0x01;
+        cpu.f = 0x10; // CY set
+        execute_instruction_until_done(&mut cpu, 0x88, vec![]);
+        assert_eq!(cpu.a, 0x11);
+        assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry not set
+        assert_eq!(cpu.pc, 2);
+
+        // Test Case 3: ADC A, C
+        // A = 0x05, C = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.c = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x89, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 3);
+
+        // Test Case 4: ADC A, C with Carry and Half-Carry
+        // A = 0x0F, C = 0x01, CY = 1
+        // Expected: A = 0x11, Half-Carry set
+        cpu.a = 0x0F;
+        cpu.c = 0x01;
+        cpu.f = 0x10;
+        execute_instruction_until_done(&mut cpu, 0x89, vec![]);
+        assert_eq!(cpu.a, 0x11);
+        assert_eq!(cpu.f & 0x20, 0x20);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 4);
+
+        // Test Case 5: ADC A, D
+        // A = 0x05, D = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.d = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x8A, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 5);
+
+        // Test Case 6: ADC A, D with Carry and Half-Carry
+        // A = 0x0F, D = 0x01, CY = 1
+        // Expected: A = 0x11, Half-Carry set
+        cpu.a = 0x0F;
+        cpu.d = 0x01;
+        cpu.f = 0x10;
+        execute_instruction_until_done(&mut cpu, 0x8A, vec![]);
+        assert_eq!(cpu.a, 0x11);
+        assert_eq!(cpu.f & 0x20, 0x20);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 6);
+
+        // Test Case 7: ADC A, E
+        // A = 0x05, E = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.e = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x8B, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 7);
+
+        // Test Case 8: ADC A, E with Carry and Half-Carry
+        // A = 0x0F, E = 0x01, CY = 1
+        // Expected: A = 0x11, Half-Carry set
+        cpu.a = 0x0F;
+        cpu.e = 0x01;
+        cpu.f = 0x10;
+        execute_instruction_until_done(&mut cpu, 0x8B, vec![]);
+        assert_eq!(cpu.a, 0x11);
+        assert_eq!(cpu.f & 0x20, 0x20);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 8);
+
+        // Test Case 9: ADC A, H
+        // A = 0x05, H = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.h = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x8C, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 9);
+
+        // Test Case 10: ADC A, H with Carry and Half-Carry
+        // A = 0x0F, H = 0x01, CY = 1
+        // Expected: A = 0x11, Half-Carry set
+        cpu.a = 0x0F;
+        cpu.h = 0x01;
+        cpu.f = 0x10;
+        execute_instruction_until_done(&mut cpu, 0x8C, vec![]);
+        assert_eq!(cpu.a, 0x11);
+        assert_eq!(cpu.f & 0x20, 0x20);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 10);
+
+        // Test Case 11: ADC A, L
+        // A = 0x05, L = 0x05, CY = 0
+        // Expected: A = 0x0A, Flags = Clear
+        cpu.a = 0x05;
+        cpu.l = 0x05;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0x8D, vec![]);
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.f & 0x80, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x00);
+        assert_eq!(cpu.f & 0x10, 0x00);
+        assert_eq!(cpu.pc, 11);
+
+        // Test Case 12: ADC A, L with Carry and Half-Carry
+        // A = 0x0F, L = 0x01, CY = 1
+        // Expected: A = 0x11, Half-Carry set
+        cpu.a = 0xFF;
+        cpu.l = 0x00;
+        cpu.f = 0x10;
+        execute_instruction_until_done(&mut cpu, 0x8D, vec![]);
+        assert_eq!(cpu.a, 0x00);
+        assert_eq!(cpu.f & 0x20, 0x20);
+        assert_eq!(cpu.f & 0x10, 0x10);
+        assert_eq!(cpu.pc, 12);
+    }
+
+    #[test]
+    fn test_add_inc_dec() {
         let mut cpu = setup_cpu();
         // ADD A, A
         cpu.a = 0x05;

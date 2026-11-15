@@ -180,7 +180,15 @@ impl CPU {
                 0x84 => { self.a = self.add_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADD A, H
                 0x85 => { self.a = self.add_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADD A, L
                 0x86 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.add_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // ADD A, (HL)
-                
+                0x8F => { self.a = self.adc_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // ADC A, B
+                0x88 => { self.a = self.adc_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // ADC A, B
+                0x89 => { self.a = self.adc_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // ADC A, C
+                0x8A => { self.a = self.adc_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // ADC A, D
+                0x8B => { self.a = self.adc_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // ADC A, E
+                0x8C => { self.a = self.adc_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADC A, H
+                0x8D => { self.a = self.adc_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADC A, L
+                0x8E => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.adc_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // ADC A, (HL)
+
                 // Jump instructions
                 0x18 => { self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
                 0x20 => {
@@ -343,15 +351,14 @@ impl CPU {
         }
     }
 
-    // Helper method for 8-bit add instructions
-    //TODO: fix flag updates
-    fn add_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
-        let (result, overflow) = reg1.overflowing_add(reg2);
+    // Helper method to set flags for an 8-bit addition (including optional carry)
+    fn set_flags_for_addition(&mut self, reg1: u8, reg2: u8, carry_input: bool) {
+        let carry_val = if carry_input { 1 } else { 0 };
+        let result = reg1.wrapping_add(reg2).wrapping_add(carry_val);
         
-        // Preserve bits 0-3 of the flags register if your implementation requires it,
-        // otherwise, clearing them is usually acceptable.
+        // Preserve bits 0-3 of the flags register
         self.f &= 0xF0; 
-
+        
         // Set Zero Flag (bit 7): 1 if result is 0
         if result == 0 {
             self.f |= 0x80;
@@ -360,14 +367,14 @@ impl CPU {
         }
         
         // Set Half-Carry flag (bit 5): 1 if lower 4 bits caused carry
-        if (reg1 & 0x0F) + (reg2 & 0x0F) > 0x0F {
+        if (reg1 as u16 & 0x0F) + (reg2 as u16 & 0x0F) + carry_val as u16 > 0x0F {
             self.f |= 0x20;
         } else {
             self.f &= !0x20;
         }
         
         // Set Carry Flag (bit 4): 1 if overflow occurred
-        if overflow {
+        if (reg1 as u16 + reg2 as u16 + carry_val as u16) > 0xFF {
             self.f |= 0x10;
         } else {
             self.f &= !0x10;
@@ -375,7 +382,19 @@ impl CPU {
         
         // Clear Subtract flag (bit 6)
         self.f &= !0x40;
+    }
 
+    // Helper method for 8-bit add instructions
+    fn add_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
+        let result = reg1.wrapping_add(reg2);
+        self.set_flags_for_addition(reg1, reg2, false);
+        result
+    }
+
+    fn adc_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
+        let carry_input = (self.f & 0x10) != 0;
+        let result = reg1.wrapping_add(reg2).wrapping_add(if carry_input { 1 } else { 0 });
+        self.set_flags_for_addition(reg1, reg2, carry_input);
         result
     }
 
