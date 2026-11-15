@@ -1075,6 +1075,131 @@ mod tests {
     }
 
     #[test]
+    fn test_cp_instructions() {
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xBF: CP A, A ---
+        // A = 0x55. Comparison A - A = 0.
+        // Expected: A = 0x55, Z=1, C=0, HC=0, S=0 (assuming initial flags are 0)
+        cpu.a = 0x55;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBF, vec![]);
+        assert_eq!(cpu.a, 0x55);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+        assert_eq!(cpu.f & 0x10, 0x00); // Carry clear
+        assert_eq!(cpu.f & 0x20, 0x00); // Half-Carry clear
+        assert_eq!(cpu.f & 0x40, 0x40); // Subtract set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xB8: CP A, B ---
+        // Case 1: Equal
+        // A = 0xAA, B = 0xAA. Result: A-B = 0.
+        // Expected: A = 0xAA, Z=1
+        cpu.a = 0xAA;
+        cpu.b = 0xAA;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xB8, vec![]);
+        assert_eq!(cpu.a, 0xAA);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        // Case 2: Not Equal
+        // A = 0xAA, B = 0x55. Result: A-B != 0.
+        // Expected: A = 0xAA, Z=0
+        cpu.a = 0xAA;
+        cpu.b = 0x55;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xB8, vec![]);
+        assert_eq!(cpu.a, 0xAA);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xB9: CP A, C ---
+        // A = 0x10, C = 0x10.
+        // Expected: A = 0x10, Z=1
+        cpu.a = 0x10;
+        cpu.c = 0x10;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xB9, vec![]);
+        assert_eq!(cpu.a, 0x10);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xBA: CP A, D ---
+        // A = 0x20, D = 0x20.
+        // Expected: A = 0x20, Z=1
+        cpu.a = 0x20;
+        cpu.d = 0x20;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBA, vec![]);
+        assert_eq!(cpu.a, 0x20);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xBB: CP A, E ---
+        // A = 0x30, E = 0x30.
+        // Expected: A = 0x30, Z=1
+        cpu.a = 0x30;
+        cpu.e = 0x30;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBB, vec![]);
+        assert_eq!(cpu.a, 0x30);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xBC: CP A, H ---
+        // A = 0x40, H = 0x40.
+        // Expected: A = 0x40, Z=1
+        cpu.a = 0x40;
+        cpu.h = 0x40;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBC, vec![]);
+        assert_eq!(cpu.a, 0x40);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xBD: CP A, L ---
+        // A = 0x50, L = 0x50.
+        // Expected: A = 0x50, Z=1
+        cpu.a = 0x50;
+        cpu.l = 0x50;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBD, vec![]);
+        assert_eq!(cpu.a, 0x50);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        let mut cpu = setup_cpu();
+
+        // --- Test 0xBE: CP A, (HL) ---
+        // HL = 0x2000, Memory[0x2000] = 0x60
+        // A = 0x60
+        // Expected: A = 0x60, Z=1
+        cpu.h = 0x20;
+        cpu.l = 0x00;
+        cpu.memory[0x2000] = 0x60;
+        cpu.a = 0x60;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBE, vec![]);
+        assert_eq!(cpu.a, 0x60);
+        assert_eq!(cpu.f & 0x80, 0x80); // Zero set
+
+        // Case 2: Not Equal
+        // A = 0x60, Memory[0x2000] = 0x70
+        // Expected: A = 0x60, Z=0
+        cpu.a = 0x60;
+        cpu.memory[0x2000] = 0x70;
+        cpu.f = 0x00;
+        execute_instruction_until_done(&mut cpu, 0xBE, vec![]);
+        assert_eq!(cpu.a, 0x60);
+        assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
+    }
+
+    #[test]
     fn test_add_inc_dec() {
         let mut cpu = setup_cpu();
         // ADD A, A
