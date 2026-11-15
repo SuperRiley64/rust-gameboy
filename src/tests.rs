@@ -1545,6 +1545,89 @@ mod tests {
     }
 
     #[test]
+    fn test_stack_instructions() {
+        // --- Test BC Pair ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x2000;
+        cpu.b = 0x11;
+        cpu.c = 0x22;
+        
+        // PUSH BC (0xC5)
+        // SP becomes 0x1FFE, memory[0x1FFF]=0x11, memory[0x1FFE]=0x22
+        execute_instruction_until_done(&mut cpu, 0xC5, vec![]);
+        assert_eq!(cpu.sp, 0x1FFE);
+        assert_eq!(cpu.memory[0x1FFF], 0x11);
+        assert_eq!(cpu.memory[0x1FFE], 0x22);
+
+        // POP BC (0xC1)
+        // SP becomes 0x2000, B=0x11, C=0x22
+        execute_instruction_until_done(&mut cpu, 0xC1, vec![]);
+        assert_eq!(cpu.sp, 0x2000);
+        assert_eq!(cpu.b, 0x11);
+        assert_eq!(cpu.c, 0x22);
+
+        // --- Test DE Pair ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x3000;
+        cpu.d = 0x33;
+        cpu.e = 0x44;
+
+        // PUSH DE (0xD5)
+        // SP becomes 0x2FFE, memory[0x2FFF]=0x33, memory[0x2FFE]=0x44
+        execute_instruction_until_done(&mut cpu, 0xD5, vec![]);
+        assert_eq!(cpu.sp, 0x2FFE);
+        assert_eq!(cpu.memory[0x2FFF], 0x33);
+        assert_eq!(cpu.memory[0x2FFE], 0x44);
+
+        // POP DE (0xD1)
+        // SP becomes 0x3000, D=0x33, E=0x44
+        execute_instruction_until_done(&mut cpu, 0xD1, vec![]);
+        assert_eq!(cpu.sp, 0x3000);
+        assert_eq!(cpu.d, 0x33);
+        assert_eq!(cpu.e, 0x44);
+
+        // --- Test HL Pair ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x4000;
+        cpu.h = 0x55;
+        cpu.l = 0x66;
+
+        // PUSH HL (0xE5)
+        // SP becomes 0x3FFE, memory[0x3FFF]=0x55, memory[0x3FFE]=0x66
+        execute_instruction_until_done(&mut cpu, 0xE5, vec![]);
+        assert_eq!(cpu.sp, 0x3FFE);
+        assert_eq!(cpu.memory[0x3FFF], 0x55);
+        assert_eq!(cpu.memory[0x3FFE], 0x66);
+
+        // POP HL (0xE1)
+        // SP becomes 0x4000, H=0x55, L=0x66
+        execute_instruction_until_done(&mut cpu, 0xE1, vec![]);
+        assert_eq!(cpu.sp, 0x4000);
+        assert_eq!(cpu.h, 0x55);
+        assert_eq!(cpu.l, 0x66);
+
+        // --- Test AF Pair ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x5000;
+        cpu.a = 0x77;
+        cpu.f = 0x88;
+
+        // PUSH AF (0xF5)
+        // SP becomes 0x4FFE, memory[0x4FFF]=0x77, memory[0x4FFE]=0x88
+        execute_instruction_until_done(&mut cpu, 0xF5, vec![]);
+        assert_eq!(cpu.sp, 0x4FFE);
+        assert_eq!(cpu.memory[0x4FFF], 0x77);
+        assert_eq!(cpu.memory[0x4FFE], 0x88);
+
+        // POP AF (0xF1)
+        // SP becomes 0x5000, A=0x77, F=0x88
+        execute_instruction_until_done(&mut cpu, 0xF1, vec![]);
+        assert_eq!(cpu.sp, 0x5000);
+        assert_eq!(cpu.a, 0x77);
+        assert_eq!(cpu.f, 0x88);
+    }
+
+    #[test]
     fn test_jump_instructions() {
         let mut cpu = setup_cpu();
         // JP nn

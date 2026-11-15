@@ -15,6 +15,7 @@ pub enum Register16{
     DE,
     HL,
     SP,
+    AF,
 }
 
 pub struct CPU {
@@ -337,6 +338,17 @@ impl CPU {
                 0x3F => { self.f = (self.f ^ 0x10) & 0x9F; self.pc += 1; self.cycles = 1; } // CCF (flip the carry flag)
                 0x2F => { self.a = !self.a; self.f |= 0x60; self.pc += 1; self.cycles = 0; } // CPL
 
+                // Stack instructions
+                0xC1 => { self.pop(Register16::BC); self.pc += 1; self.cycles = 2; } // POP BC
+                0xD1 => { self.pop(Register16::DE); self.pc += 1; self.cycles = 2; } // POP DE
+                0xE1 => { self.pop(Register16::HL); self.pc += 1; self.cycles = 2; } // POP HL
+                0xF1 => { self.pop(Register16::AF); self.pc += 1; self.cycles = 2; } // POP AF
+
+                0xC5 => { self.push(Register16::BC); self.pc += 1; self.cycles = 2; } // PUSH BC
+                0xD5 => { self.push(Register16::DE); self.pc += 1; self.cycles = 2; } // PUSH DE
+                0xE5 => { self.push(Register16::HL); self.pc += 1; self.cycles = 2; } // PUSH HL
+                0xF5 => { self.push(Register16::AF); self.pc += 1; self.cycles = 2; } // PUSH AF
+
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
         } else {
@@ -413,6 +425,10 @@ impl CPU {
                 self.l = (value & 0xFF) as u8; // Low byte goes to `l`
             },
             Register16::SP => self.sp = value, // sp is 16 bit so can be assigned directly
+            Register16::AF => {
+                self.h = (value >> 8) as u8;   // High byte goes to `h`
+                self.l = (value & 0xFF) as u8; // Low byte goes to `l`
+            },
         }
     }
 
@@ -650,6 +666,7 @@ impl CPU {
             Register16::DE => (self.d, self.e),
             Register16::HL => (self.h, self.l),
             Register16::SP => ((self.sp >> 8) as u8, (self.sp & 0xFF) as u8),
+            Register16::AF => (self.a, self.f),
         };
 
         let current_hl = ((self.h as u16) << 8) | (self.l as u16);
@@ -1022,5 +1039,79 @@ impl CPU {
         self.f |= 0x40;
 
         self.memory[addr as usize] = result;
+    }
+
+    // Helper method to pop a 16-bit value from the stack into a register pair
+    fn pop(&mut self, reg: Register16) {
+        match reg {
+            Register16::BC => {
+                self.c = self.memory[self.sp as usize];
+                self.sp += 1;
+                self.b = self.memory[self.sp as usize];
+                self.sp += 1;
+            }
+            Register16::DE => {
+                self.e = self.memory[self.sp as usize];
+                self.sp += 1;
+                self.d = self.memory[self.sp as usize];
+                self.sp += 1;
+            }
+            Register16::HL => {
+                self.l = self.memory[self.sp as usize];
+                self.sp += 1;
+                self.h = self.memory[self.sp as usize];
+                self.sp += 1;
+            }
+            Register16::SP => {
+                let low = self.memory[self.sp as usize] as u16;
+                let high = self.memory[(self.sp + 1) as usize] as u16;
+                self.sp = (high << 8) | low;
+                self.sp += 2;
+            }
+            Register16::AF => {
+                self.f = self.memory[self.sp as usize];
+                self.sp += 1;
+                self.a = self.memory[self.sp as usize];
+                self.sp += 1;
+            }
+        }
+    }
+
+    // Helper method to push a 16-bit value onto the stack
+    fn push(&mut self, reg: Register16) {
+        match reg {
+            Register16::BC => {
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.b;
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.c;
+            }
+            Register16::DE => {
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.d;
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.e;
+            }
+            Register16::HL => {
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.h;
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.l;
+            }
+            Register16::SP => {
+                let high = (self.sp >> 8) as u8;
+                let low = (self.sp & 0xFF) as u8;
+                self.sp -= 1;
+                self.memory[self.sp as usize] = high;
+                self.sp -= 1;
+                self.memory[self.sp as usize] = low;
+            }
+            Register16::AF => {
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.a;
+                self.sp -= 1;
+                self.memory[self.sp as usize] = self.f;
+            }
+        }
     }
 }
