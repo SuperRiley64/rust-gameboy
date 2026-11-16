@@ -289,7 +289,11 @@ impl CPU {
                     }
                     self.cycles = 2;
                 } // JR C s8
-                0xC3 => {self.jump_nn(); self.cycles = 2;} // JP nn
+                0xC3 => { self.jump_nn(); self.cycles = 2; } // JP a16
+                0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NZ a16
+                0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NC a16
+                0xCA => { if self.f & 0x80 == 0x80 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP Z a16
+                0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP C a16
                 
                 // increment/decrement instructions
                 0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // INC A

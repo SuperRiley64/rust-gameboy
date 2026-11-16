@@ -1628,7 +1628,7 @@ mod tests {
     }
 
     #[test]
-    fn test_jump_instructions() {
+    fn test_jp_a16() {
         let mut cpu = setup_cpu();
         // JP nn
         cpu.memory[0] = 0xC3;
@@ -1636,6 +1636,126 @@ mod tests {
         cpu.memory[2] = 0x10;
         execute_instruction_until_done(&mut cpu, 0xC3, vec![0x20, 0x10]);
         assert_eq!(cpu.pc, 0x1020);
+    }
+
+    #[test]
+    fn test_jp_nz_a16() {
+        // Case 1: Zero flag is NOT set (Condition Met - Jump)
+        // 0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.cycles = 2 } }
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // Z = 0
+        cpu.memory[0] = 0xC2;
+        cpu.memory[1] = 0x10; // Low byte
+        cpu.memory[2] = 0x20; // High byte
+        
+        execute_instruction_until_done(&mut cpu, 0xC2, vec![0x10, 0x20]);
+        
+        assert_eq!(cpu.pc, 0x2010);
+    }
+
+    #[test]
+    fn test_jp_nz_a16_no_jump() {
+        // Case 2: Zero flag IS set (Condition Not Met - No Jump)
+        let mut cpu = setup_cpu();
+        cpu.f = 0x80; // Z = 1
+        cpu.memory[0] = 0xC2;
+        cpu.memory[1] = 0x10;
+        cpu.memory[2] = 0x20;
+        
+        execute_instruction_until_done(&mut cpu, 0xC2, vec![0x10, 0x20]);
+        
+        // PC should have incremented by 3 (no jump)
+        assert_eq!(cpu.pc, 3);
+    }
+
+    #[test]
+    fn test_jp_nc_a16() {
+        // Case 1: Carry flag is NOT set (Condition Met - Jump)
+        // 0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.cycles = 2 } }
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // C = 0
+        cpu.memory[0] = 0xD2;
+        cpu.memory[1] = 0x30;
+        cpu.memory[2] = 0x40;
+        
+        execute_instruction_until_done(&mut cpu, 0xD2, vec![0x30, 0x40]);
+        
+        assert_eq!(cpu.pc, 0x4030);
+    }
+
+    #[test]
+    fn test_jp_nc_a16_no_jump() {
+        // Case 2: Carry flag IS set (Condition Not Met - No Jump)
+        let mut cpu = setup_cpu();
+        cpu.f = 0x10; // C = 1
+        cpu.memory[0] = 0xD2;
+        cpu.memory[1] = 0x30;
+        cpu.memory[2] = 0x40;
+        
+        execute_instruction_until_done(&mut cpu, 0xD2, vec![0x30, 0x40]);
+        
+        // PC should have incremented by 3 (no jump)
+        assert_eq!(cpu.pc, 3);
+    }
+
+    #[test]
+    fn test_jp_z_a16() {
+        // Case 1: Zero flag IS set (Condition Met - Jump)
+        // 0xCA => { if self.f & 0x80 == 0x80 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } }
+        let mut cpu = setup_cpu();
+        cpu.f = 0x80; // Z = 1
+        cpu.memory[0] = 0xCA;
+        cpu.memory[1] = 0x10; // Low byte
+        cpu.memory[2] = 0x20; // High byte
+        
+        execute_instruction_until_done(&mut cpu, 0xCA, vec![0x10, 0x20]);
+        
+        assert_eq!(cpu.pc, 0x2010);
+    }
+
+    #[test]
+    fn test_jp_z_a16_no_jump() {
+        // Case 2: Zero flag is NOT set (Condition Not Met - No Jump)
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // Z = 0
+        cpu.memory[0] = 0xCA;
+        cpu.memory[1] = 0x10;
+        cpu.memory[2] = 0x20;
+        
+        execute_instruction_until_done(&mut cpu, 0xCA, vec![0x10, 0x20]);
+        
+        // PC should have incremented by 3 (no jump)
+        assert_eq!(cpu.pc, 3);
+    }
+
+    #[test]
+    fn test_jp_c_a16() {
+        // Case 1: Carry flag IS set (Condition Met - Jump)
+        // 0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } }
+        let mut cpu = setup_cpu();
+        cpu.f = 0x10; // C = 1
+        cpu.memory[0] = 0xDA;
+        cpu.memory[1] = 0x30;
+        cpu.memory[2] = 0x40;
+        
+        execute_instruction_until_done(&mut cpu, 0xDA, vec![0x30, 0x40]);
+        
+        assert_eq!(cpu.pc, 0x4030);
+    }
+
+    #[test]
+    fn test_jp_c_a16_no_jump() {
+        // Case 2: Carry flag is NOT set (Condition Not Met - No Jump)
+        let mut cpu = setup_cpu();
+        cpu.f = 0x00; // C = 0
+        cpu.memory[0] = 0xDA;
+        cpu.memory[1] = 0x30;
+        cpu.memory[2] = 0x40;
+        
+        execute_instruction_until_done(&mut cpu, 0xDA, vec![0x30, 0x40]);
+        
+        // PC should have incremented by 3 (no jump)
+        assert_eq!(cpu.pc, 3);
     }
 
     #[test]
