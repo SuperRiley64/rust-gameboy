@@ -44,7 +44,7 @@ impl CPU {
             e: 0,
             h: 0,
             l: 0,
-            sp: 0,
+            sp: 0xFFFE,
             pc: 0,
             memory: [0; 0x10000],
             cycles: 0,
@@ -326,10 +326,10 @@ impl CPU {
                 0x35 => { self.dec_memory_at_hl(); self.pc += 1; self.cycles = 2; } // DEC (HL)
 
                 // 16-bit adds
-                0x09 => { self.add_16bit_to_hl(Register16::BC); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, BC
-                0x19 => { self.add_16bit_to_hl(Register16::DE); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, DE
-                0x29 => { self.add_16bit_to_hl(Register16::HL); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, HL
-                0x39 => { self.add_16bit_to_hl(Register16::SP); self.sp += 1; self.pc += 1; self.cycles = 1; } // ADD HL, SP
+                0x09 => { self.add_16bit_to_hl(Register16::BC); self.pc += 1; self.cycles = 1; } // ADD HL, BC
+                0x19 => { self.add_16bit_to_hl(Register16::DE); self.pc += 1; self.cycles = 1; } // ADD HL, DE
+                0x29 => { self.add_16bit_to_hl(Register16::HL); self.pc += 1; self.cycles = 1; } // ADD HL, HL
+                0x39 => { self.add_16bit_to_hl(Register16::SP); self.pc += 1; self.cycles = 1; } // ADD HL, SP
                 0x07 => { self.rlca(); self.pc += 1; self.cycles = 0; } // RLCA
                 0x17 => { self.rla(); self.pc += 1; self.cycles = 0; } // RLA
                 0x0F => { self.rrca(); self.pc += 1; self.cycles = 0; } // RRCA

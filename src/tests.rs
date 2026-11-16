@@ -1856,7 +1856,6 @@ mod tests {
         execute_instruction_until_done(&mut cpu, 0x09, vec![]);
         assert_eq!(cpu.h, 0x30);
         assert_eq!(cpu.l, 0x00);
-        assert_eq!(cpu.sp, 1);
 
         // --- Test 0x19: ADD DE to HL ---
         // LD DE, 0x3000
