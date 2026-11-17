@@ -258,39 +258,12 @@ impl CPU {
                 0xFE => { _ = self.sub_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // CP d8
                 
                 // Jump instructions
-                0x18 => { self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
-                0x20 => {
-                    if (self.f & 0x80) == 0 { // zero flag
-                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
-                    } else {
-                        self.pc += 2;
-                    }
-                    self.cycles = 2;
-                } // JR NZ s8
-                0x30 => {
-                    if (self.f & 0x10) == 0 { // carry flag
-                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
-                    } else {
-                        self.pc += 2;
-                    }
-                    self.cycles = 2;
-                } // JR NC s8
-                0x28 => {
-                    if (self.f & 0x80) == 0x80 { // zero flag
-                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
-                    } else {
-                        self.pc += 2;
-                    }
-                    self.cycles = 2;
-                } // JR Z s8
-                0x38 => {
-                    if (self.f & 0x10) == 0x10 { // carry flag
-                        self.jump_relative_s8(self.memory[(self.pc as usize) + 1] as i8);
-                    } else {
-                        self.pc += 2;
-                    }
-                    self.cycles = 2;
-                } // JR C s8
+                0x18 => { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
+                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NZ s8
+                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NC s8
+                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR Z s8
+                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR C s8
+
                 0xC3 => { self.jump_nn(); self.cycles = 2; } // JP a16
                 0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NZ a16
                 0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NC a16
@@ -298,21 +271,18 @@ impl CPU {
                 0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP C a16
 
                 // Call/Ret instructions
-                0xCD => {
-                    let return_address = self.pc.wrapping_add(3);
-                    self.push_16bit_value(return_address);
-                    self.pc = self.get_16_bit_operand(self.pc);
-                    self.cycles = 5;
-                } // CALL a16
-                0xC9 => {
-                    self.pc = self.pop_16bit_value();
-                    self.cycles = 3;
-                } // RET
-                0xD9 => {
-                    self.pc = self.pop_16bit_value();
-                    self.ime = true;
-                    self.cycles = 3;
-                } // RETI
+                0xCD => { self.call(); self.cycles = 5; } // CALL a16
+                0xC4 => { if self.f & 0x80 == 0 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL NZ a16
+                0xD4 => { if self.f & 0x10 == 0 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL NC a16
+                0xCC => { if self.f & 0x80 == 0x80 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL Z a16
+                0xDC => { if self.f & 0x10 == 0x10 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL C a16
+
+                0xC9 => { self.pc = self.pop_16bit_value(); self.cycles = 3; } // RET
+                0xD9 => { self.pc = self.pop_16bit_value(); self.ime = true; self.cycles = 3; } // RETI
+                0xC0 => { if self.f & 0x80 == 0 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET NZ
+                0xD0 => { if self.f & 0x10 == 0 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET NC
+                0xC8=> { if self.f & 0x80 == 0x80 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET Z
+                0xD8 => { if self.f & 0x10 == 0x10 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET C
                                 
                 // increment/decrement instructions
                 0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // INC A
@@ -744,7 +714,7 @@ impl CPU {
         // If you added 3, you would skip the first 3 bytes of the target instruction.
     }
 
-    fn jump_relative_s8(&mut self, s8: i8) {
+    fn jump_r_s8(&mut self, s8: i8) {
         let offset = s8 as i32;
         self.pc = (self.pc as i32 + 2 + offset) as u16;
     }
@@ -1152,5 +1122,11 @@ impl CPU {
         let high = self.memory[self.sp as usize] as u16;
         self.sp += 1;
         (high << 8) | low
+    }
+
+    fn call(&mut self){
+        let return_address = self.pc.wrapping_add(3);
+        self.push_16bit_value(return_address);
+        self.pc = self.get_16_bit_operand(self.pc);
     }
 }
