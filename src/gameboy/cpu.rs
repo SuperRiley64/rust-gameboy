@@ -27,6 +27,7 @@ pub struct CPU {
     pub e: u8,
     pub h: u8,
     pub l: u8,
+    pub ime: bool, // interrupt master enable (write-only)
     pub sp: u16,
     pub pc: u16,
     pub memory: [u8; 0x10000],
@@ -44,7 +45,8 @@ impl CPU {
             e: 0,
             h: 0,
             l: 0,
-            sp: 0xFFFE,
+            ime: false, // unset when game starts running
+            sp: 0xFFFE, // fffe because ffff is the interrupt enable register
             pc: 0,
             memory: [0; 0x10000],
             cycles: 0,
@@ -306,6 +308,11 @@ impl CPU {
                     self.pc = self.pop_16bit_value();
                     self.cycles = 3;
                 } // RET
+                0xD9 => {
+                    self.pc = self.pop_16bit_value();
+                    self.ime = true;
+                    self.cycles = 3;
+                } // RETI
                                 
                 // increment/decrement instructions
                 0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // INC A

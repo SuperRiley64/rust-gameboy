@@ -2318,4 +2318,50 @@ mod tests {
         assert_eq!(cpu.pc, 0x0003);
         assert_eq!(cpu.sp, 0xFFFE);
     }
+
+    #[test]
+    fn test_call_and_reti() {
+        let mut cpu = setup_cpu();
+        // Initialize stack pointer to the standard high memory value
+        cpu.sp = 0xFFFE;
+        cpu.pc = 0x0000;
+
+        // --- Setup CALL ---
+        // Instruction: CALL 0x1000
+        // Opcode: 0xCD, Low: 0x00, High: 0x10
+        cpu.memory[0x0000] = 0xCD;
+        cpu.memory[0x0001] = 0x00;
+        cpu.memory[0x0002] = 0x10;
+
+        // Execute CALL
+        // The CALL instruction should:
+        // 1. Calculate the return address (PC + 3 = 0x0003)
+        // 2. Push 0x0003 onto the stack
+        // 3. Set PC to 0x1000
+        execute_instruction_until_done(&mut cpu, 0xCD, vec![0x00, 0x10]);
+
+        // Verify CALL state
+        assert_eq!(cpu.pc, 0x1000);
+        assert_eq!(cpu.sp, 0xFFFC); // Decremented twice
+        assert_eq!(cpu.memory[0xFFFD], 0x00); // High byte of 0x0003
+        assert_eq!(cpu.memory[0xFFFC], 0x03); // Low byte of 0x0003
+
+        // --- Setup RET ---
+        // Place RETI at the target address
+        cpu.memory[0x1000] = 0xD9;
+
+        // Execute RETI
+        // The RET instruction should:
+        // 1. Pop the value from the stack into the PC
+        // 2. Set the ime to 1
+        // 3. Increment SP twice
+        assert_eq!(cpu.ime, false); // starts disabled (0)
+
+        execute_instruction_until_done(&mut cpu, 0xD9, vec![]);
+
+        // Verify RETI state
+        assert_eq!(cpu.pc, 0x0003);
+        assert_eq!(cpu.ime, true);
+        assert_eq!(cpu.sp, 0xFFFE);
+    }
 }
