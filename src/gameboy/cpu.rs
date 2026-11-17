@@ -294,7 +294,19 @@ impl CPU {
                 0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NC a16
                 0xCA => { if self.f & 0x80 == 0x80 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP Z a16
                 0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP C a16
-                
+
+                // Call/Ret instructions
+                0xCD => {
+                    let return_address = self.pc.wrapping_add(3);
+                    self.push_16bit_value(return_address);
+                    self.pc = self.get_16_bit_operand(self.pc);
+                    self.cycles = 5;
+                } // CALL a16
+                0xC9 => {
+                    self.pc = self.pop_16bit_value();
+                    self.cycles = 3;
+                } // RET
+                                
                 // increment/decrement instructions
                 0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // INC A
                 0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 1; self.cycles = 0; } // INC B
@@ -340,7 +352,6 @@ impl CPU {
                 0x27 => { self.da_adjust(); self.pc += 1; self.cycles = 0; } // DAA
                 0x37 => { self.f = (self.f & 0x8F) | 0x10; self.pc += 1; self.cycles = 1; } // SCF (set the carry flag)
                 0x3F => { self.f = (self.f ^ 0x10) & 0x9F; self.pc += 1; self.cycles = 1; } // CCF (flip the carry flag)
-                0x2F => { self.a = !self.a; self.f |= 0x60; self.pc += 1; self.cycles = 0; } // CPL
 
                 // Stack instructions
                 0xC1 => { self.pop(Register16::BC); self.pc += 1; self.cycles = 2; } // POP BC
@@ -1117,5 +1128,22 @@ impl CPU {
                 self.memory[self.sp as usize] = self.f;
             }
         }
+    }
+
+    // Helper method to push a raw 16-bit value onto the stack
+    fn push_16bit_value(&mut self, value: u16) {
+        self.sp -= 1;
+        self.memory[self.sp as usize] = (value >> 8) as u8;
+        self.sp -= 1;
+        self.memory[self.sp as usize] = (value & 0xFF) as u8;
+    }
+
+    // Helper method to pop a raw 16-bit value from the stack
+    fn pop_16bit_value(&mut self) -> u16 {
+        let low = self.memory[self.sp as usize] as u16;
+        self.sp += 1;
+        let high = self.memory[self.sp as usize] as u16;
+        self.sp += 1;
+        (high << 8) | low
     }
 }
