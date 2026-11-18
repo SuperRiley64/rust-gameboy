@@ -1912,6 +1912,24 @@ mod tests {
         assert_eq!(cpu.pc, 3);
     }
 
+    #[test]
+    fn test_ld_sp_hl() {
+        let mut cpu = setup_cpu();
+        
+        // Initial state
+        cpu.h = 0x12;
+        cpu.l = 0x34;
+        cpu.sp = 0x0000;
+        
+        // Execute LD SP, HL
+        // Opcode: 0xF9
+        execute_instruction_until_done(&mut cpu, 0xF9, vec![]);
+        
+        // Verify that SP now holds the value of HL (0x1234)
+        assert_eq!(cpu.sp, 0x1234);
+        assert_eq!(cpu.pc, 1);
+    }
+
     fn test_jr_s8() {
         let mut cpu = setup_cpu();
         cpu.pc = 0x1000;
@@ -2509,5 +2527,118 @@ mod tests {
         execute_instruction_until_done(&mut cpu2, 0xD8, vec![]);
         assert_eq!(cpu2.pc, 1);
         assert_eq!(cpu2.sp, 0xFFFC);
+    }
+
+    #[test]
+    fn test_add_sp_s8() {
+        // --- Case 1: Positive addition ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x2000;
+        // Opcode: 0xE8, s8: 0x05
+        cpu.memory[0] = 0xE8;
+        cpu.memory[1] = 0x05;
+        
+        execute_instruction_until_done(&mut cpu, 0xE8, vec![0x05]);
+        
+        assert_eq!(cpu.sp, 0x2005);
+        assert_eq!(cpu.pc, 2);
+
+        // --- Case 2: Negative addition ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x2000;
+        // Opcode: 0xE8, s8: -0x05 (0xFB in 8-bit 2's complement)
+        cpu.memory[0] = 0xE8;
+        cpu.memory[1] = 0xFB;
+        
+        execute_instruction_until_done(&mut cpu, 0xE8, vec![0xFB]);
+        
+        assert_eq!(cpu.sp, 0x1FFB);
+        assert_eq!(cpu.pc, 2);
+
+        // --- Case 3: Wrapping boundary ---
+        let mut cpu = setup_cpu();
+        cpu.sp = 0x0000;
+        // Opcode: 0xE8, s8: -1 (0xFF in 8-bit 2's complement)
+        cpu.memory[0] = 0xE8;
+        cpu.memory[1] = 0xFF;
+        
+        execute_instruction_until_done(&mut cpu, 0xE8, vec![0xFF]);
+        
+        assert_eq!(cpu.sp, 0xFFFF);
+        assert_eq!(cpu.pc, 2);
+    }
+
+    #[test]
+    fn test_di() {
+        let mut cpu = setup_cpu();
+        
+        // Start with interrupts enabled
+        cpu.ime = true;
+        
+        // Execute DI (Opcode: 0xF3)
+        execute_instruction_until_done(&mut cpu, 0xF3, vec![]);
+        
+        // Verify interrupts are now disabled
+        assert_eq!(cpu.ime, false);
+        assert_eq!(cpu.pc, 1);
+    }
+
+    #[test]
+    fn test_ei() {
+        let mut cpu = setup_cpu();
+        
+        // Start with interrupts disabled
+        cpu.ime = false;
+        
+        // Execute EI (Opcode: 0xFB)
+        execute_instruction_until_done(&mut cpu, 0xFB, vec![]);
+        
+        // Verify interrupts are now enabled
+        assert_eq!(cpu.ime, true);
+        assert_eq!(cpu.pc, 1);
+    }
+
+    #[test]
+    fn test_rst_instructions() {
+        let mut cpu = setup_cpu();
+        
+        // The RST instructions are at the start of our test "program"
+        // We set the PC to 0x1000
+        cpu.pc = 0x1000;
+        cpu.sp = 0xFFFE;
+
+        // Define the RST instructions and their target addresses
+        let rst_instructions = [
+            (0xC7, 0x0000), // RST 0
+            (0xCF, 0x0008), // RST 1
+            (0xD7, 0x0010), // RST 2
+            (0xDF, 0x0018), // RST 3
+            (0xE7, 0x0020), // RST 4
+            (0xEF, 0x0028), // RST 5
+            (0xF7, 0x0030), // RST 6
+            (0xFF, 0x0038), // RST 7
+        ];
+
+        for (opcode, target_address) in rst_instructions {
+            // Reset CPU state for each iteration
+            let mut cpu_iter = setup_cpu();
+            cpu_iter.pc = 0x1000;
+            cpu_iter.sp = 0xFFFE;
+
+            // Execute the RST instruction
+            // (Note: execute_instruction_until_done is a helper that 
+            // handles the cycle counting/looping logic for us)
+            execute_instruction_until_done(&mut cpu_iter, opcode, vec![]);
+
+            // 1. Verify the jump address
+            assert_eq!(cpu_iter.pc, target_address, "RST 0x{:02X} should jump to 0x{:04X}", opcode, target_address);
+
+            // 2. Verify the return address was pushed to the stack.
+            // The return address is PC + 1 = 0x1001.
+            // The stack pointer should have decremented twice to 0xFFFC.
+            assert_eq!(cpu_iter.sp, 0xFFFC);
+            assert_eq!(cpu_iter.memory[0xFFFD], 0x10); // High byte of 0x1001
+            assert_eq!(cpu_iter.memory[0xFFFC], 0x01); // Low byte of 0x1001
+        }
     }
 }

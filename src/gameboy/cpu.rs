@@ -116,7 +116,10 @@ impl CPU {
                 0x11 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::DE, val); self.pc += 3; self.cycles = 2; } // LD DE, nn
                 0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc += 3; self.cycles = 2; } // LD HL, nn
                 0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc += 3; self.cycles = 2; } // LD SP, nn
-                
+                0xF9 => { self.sp = ((self.h as u16) << 8) | (self.l as u16); self.pc += 1; self.cycles = 1; } // LD SP, HL
+                0xF8 => { let s8 = self.memory[(self.pc + 1) as usize] as i8; let result_sp = self.sp.wrapping_add(s8 as u16); self.assign_16bit_register(Register16::HL, result_sp); self.pc += 2; self.cycles = 2; } // LD HL, SP+s8
+                0xE8 => { let s8 = self.memory[(self.pc + 1) as usize] as i8; self.sp = self.sp.wrapping_add(s8 as u16); self.pc += 2; self.cycles = 3; } // ADD SP, s8
+
                 // 8-bit load register instructions
                 0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, A
                 0x78 => { self.ld_reg_to_reg(Register8::B, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, B
@@ -340,6 +343,20 @@ impl CPU {
                 0xD5 => { self.push(Register16::DE); self.pc += 1; self.cycles = 2; } // PUSH DE
                 0xE5 => { self.push(Register16::HL); self.pc += 1; self.cycles = 2; } // PUSH HL
                 0xF5 => { self.push(Register16::AF); self.pc += 1; self.cycles = 2; } // PUSH AF
+
+                // Interrupt master enable setters
+                0xF3 => { self.ime = false; self.pc += 1; self.cycles = 0; } // DI
+                0xFB => { self.ime = true; self.pc += 1; self.cycles = 0; } // EI
+
+                // Reset instructions
+                0xC7 => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0000; self.cycles = 3; } // RST 0
+                0xCF => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0008; self.cycles = 3; } // RST 1
+                0xD7 => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0010; self.cycles = 3; } // RST 2
+                0xDF => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0018; self.cycles = 3; } // RST 3
+                0xE7 => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0020; self.cycles = 3; } // RST 4
+                0xEF => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0028; self.cycles = 3; } // RST 5
+                0xF7 => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0030; self.cycles = 3; } // RST 6
+                0xFF => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0038; self.cycles = 3; } // RST 7
 
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
