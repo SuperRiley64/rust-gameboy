@@ -2641,4 +2641,80 @@ mod tests {
             assert_eq!(cpu_iter.memory[0xFFFC], 0x01); // Low byte of 0x1001
         }
     }
+
+    #[test]
+fn test_all_cb_instructions() {
+    let mut cpu = CPU::new();
+    // Initialize with a known state
+    cpu.a = 0xAA;
+    cpu.b = 0xBB;
+    cpu.c = 0xCC;
+    cpu.d = 0xDD;
+    cpu.e = 0xEE;
+    cpu.h = 0xFF;
+    cpu.l = 0x00;
+    cpu.f = 0x00;
+    cpu.sp = 0xFFFE;
+    
+    // Populate some memory for (HL) targets
+    cpu.memory[0x1000] = 0x55;
+    cpu.memory[0x1001] = 0x66;
+
+    // Test every possible byte following the 0xCB prefix
+    for op_byte in 0..=255 {
+        let pc = 0x0000;
+        cpu.pc = pc;
+        
+        // Setup memory for the instruction
+        cpu.memory[pc as usize] = 0xCB;
+        cpu.memory[(pc + 1) as usize] = op_byte as u8;
+        
+        // Execute the instruction
+        cpu.cycle();
+        
+        // At this point, the CPU has moved the PC by 2 bytes.
+        // We can inspect the state here.
+        
+        // Logic to verify results based on the implementation in cpu.rs:
+        let family = op_byte >> 6;
+        let operation = (op_byte >> 3) & 0b111;
+        let target = op_byte & 0b111;
+
+        match family {
+            0 => {
+                // Family 0: Rotate and Shift operations
+                // These should clear N and H flags (bits 6 and 5) and set Z (bit 7) and C (bit 4)
+                // Note: SWAP (op 6) clears C (bit 4)
+                assert_eq!(cpu.f & 0x40, 0, "Family 0: N flag should be cleared");
+                assert_eq!(cpu.f & 0x20, 0, "Family 0: H flag should be cleared");
+                
+                // Verify specific operations if desired, e.g., RLC (op 0)
+                if operation == 0 {
+                    // RLC (A) should set Z if result is 0
+                    // For input 0xAA, RLC(0xAA) = 0x50. Z=0, C=1.
+                    // Since we started with 0xAA, let's see if it's correct for our specific op.
+                }
+            }
+            1 => {
+                // Family 1: BIT b, r
+                // These set Z (bit 7) if result is 0, set H (bit 5) to 1, and preserve C (bit 4).
+                assert_eq!(cpu.f & 0x20, 0x20, "Family 1: H flag should be set to 1");
+                // Z flag check depends on the bit index (operation)
+                // Note: In the current implementation, 'operation' is (op >> 3) & 0x07.
+            }
+            2 => {
+                // Family 2: RES b, r
+                // Flags should remain untouched.
+                // We don't have a specific check here as flags aren't updated.
+            }
+            3 => {
+                // Family 3: SET b, r
+                // Flags should remain untouched.
+            }
+            _ => unreachable!(),
+        }
+    }
+    
+    println!("Successfully executed all 256 CB-prefixed opcodes.");
+}
 }

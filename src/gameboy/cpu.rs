@@ -358,6 +358,126 @@ impl CPU {
                 0xF7 => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0030; self.cycles = 3; } // RST 6
                 0xFF => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0038; self.cycles = 3; } // RST 7
 
+                // CB-prefixed instructions
+                0xCB => {
+                    // The byte after the CB prefix selects the operation and operand.
+                    let op = self.memory[self.pc.wrapping_add(1) as usize];
+                    let family = op >> 6;
+                    let operation = (op >> 3) & 0b111;
+                    let target = op & 0b111;
+
+                    // CB instructions are always two bytes long.
+                    self.pc = self.pc.wrapping_add(2);
+
+                    // This assumes `self.cycles` stores the remaining T-cycles minus one,
+                    // as is common in instruction-dispatch loops. Check against your CPU loop.
+                    self.cycles = match (family, target) {
+                        (_, 6) if family == 1 => 11, // BIT (HL): 12 T-cycles total
+                        (_, 6) => 15,                // Other (HL): 16 T-cycles total
+                        _ => 7,                      // Register target: 8 T-cycles total
+                    };
+
+                    const FLAG_Z: u8 = 0x80;
+                    const FLAG_H: u8 = 0x20;
+                    const FLAG_C: u8 = 0x10;
+
+                    // Resolve the 8-bit operand. Target 6 means memory[HL], NOT the HL pair.
+                    let hl = ((self.h as u16) << 8) | self.l as u16;
+                    let value = match target {
+                        0 => self.b,
+                        1 => self.c,
+                        2 => self.d,
+                        3 => self.e,
+                        4 => self.h,
+                        5 => self.l,
+                        6 => self.memory[hl as usize],
+                        7 => self.a,
+                        _ => unreachable!(),
+                    };
+
+                    match family {
+                        // 00: rotate and shift group
+                        0 => {
+                            let old_carry = (self.f & FLAG_C) != 0;
+                            let bit_7 = (value & 0x80) != 0;
+                            let bit_0 = (value & 0x01) != 0;
+
+                            let (result, carry) = match operation {
+                                0 => (value.rotate_left(1), bit_7), // RLC
+                                1 => (value.rotate_right(1), bit_0), // RRC
+                                2 => ((value << 1) | u8::from(old_carry), bit_7), // RL
+                                3 => ((value >> 1) | (u8::from(old_carry) << 7), bit_0), // RR
+                                4 => (value << 1, bit_7), // SLA
+                                5 => ((value >> 1) | (value & 0x80), bit_0), // SRA
+                                6 => (value.rotate_left(4), false), // SWAP
+                                7 => (value >> 1, bit_0), // SRL
+                                _ => unreachable!(),
+                            };
+
+                            // All CB rotate/shift operations clear N and H.
+                            self.f = (if result == 0 { FLAG_Z } else { 0 })
+                                | (if carry { FLAG_C } else { 0 });
+
+                            match target {
+                                0 => self.b = result,
+                                1 => self.c = result,
+                                2 => self.d = result,
+                                3 => self.e = result,
+                                4 => self.h = result,
+                                5 => self.l = result,
+                                6 => self.memory[hl as usize] = result,
+                                7 => self.a = result,
+                                _ => unreachable!(),
+                            }
+                        }
+
+                        // 01: BIT b, r -- test only; do not write the operand back.
+                        1 => {
+                            let bit = 1u8 << operation;
+                            let zero = (value & bit) == 0;
+
+                            // Z is the test result, N=0, H=1, C is preserved.
+                            self.f = (self.f & FLAG_C)
+                                | FLAG_H
+                                | (if zero { FLAG_Z } else { 0 });
+                        }
+
+                        // 10: RES b, r -- reset a bit; flags are untouched.
+                        2 => {
+                            let result = value & !(1u8 << operation);
+                            match target {
+                                0 => self.b = result,
+                                1 => self.c = result,
+                                2 => self.d = result,
+                                3 => self.e = result,
+                                4 => self.h = result,
+                                5 => self.l = result,
+                                6 => self.memory[hl as usize] = result,
+                                7 => self.a = result,
+                                _ => unreachable!(),
+                            }
+                        }
+
+                        // 11: SET b, r -- set a bit; flags are untouched.
+                        3 => {
+                            let result = value | (1u8 << operation);
+                            match target {
+                                0 => self.b = result,
+                                1 => self.c = result,
+                                2 => self.d = result,
+                                3 => self.e = result,
+                                4 => self.h = result,
+                                5 => self.l = result,
+                                6 => self.memory[hl as usize] = result,
+                                7 => self.a = result,
+                                _ => unreachable!(),
+                            }
+                        }
+
+                        _ => unreachable!(),
+                    }
+                },
+
                 _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
             }
         } else {
