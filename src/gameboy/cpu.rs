@@ -28,6 +28,7 @@ pub struct CPU {
     pub h: u8,
     pub l: u8,
     pub ime: bool, // interrupt master enable (write-only)
+    pub halt: bool,
     pub sp: u16,
     pub pc: u16,
     pub memory: [u8; 0x10000],
@@ -46,6 +47,7 @@ impl CPU {
             h: 0,
             l: 0,
             ime: false, // unset when game starts running
+            halt: false,
             sp: 0xFFFE, // fffe because ffff is the interrupt enable register
             pc: 0,
             memory: [0; 0x10000],
@@ -53,9 +55,67 @@ impl CPU {
         }
     }
 
-    // Runs the fetch decode execute cycle
+    // Runs interrupts, halts, and the fetch decode execute cycle
     pub fn cycle(&mut self) {
-        println!("Cycle pc: {}", self.pc);
+        println!("Cycle pc: {} | wait cycles: {}", self.pc, self.cycles);
+
+        // service interrupts
+        if self.ime && self.cycles == 0 { // If interrupts are enabled...
+            // Pull the Interrupt Enable Flags (IE) and Interrupt Requested Flags (IF)
+            let ie_reg = self.memory[0xFFFF];
+            let if_reg = self.memory[0xFF0F];
+
+            let vblank_enabled: bool = (ie_reg & 0b00000001) != 0;
+            let lcd_enabled: bool = (ie_reg & 0b00000010) != 0;
+            let timer_enabled: bool = (ie_reg & 0b00000100) != 0;
+            let serial_enabled: bool = (ie_reg & 0b00001000) != 0;
+            let joypad_enabled: bool = (ie_reg & 0b00010000) != 0;
+
+            let vblank_requested: bool = (if_reg & 0b00000001) != 0;
+            let lcd_requested: bool = (if_reg & 0b00000010) != 0;
+            let timer_requested: bool = (if_reg & 0b00000100) != 0;
+            let serial_requested: bool = (if_reg & 0b00001000) != 0;
+            let joypad_requested: bool = (if_reg & 0b00010000) != 0;
+
+            // Service interrupts in order of priority, if enabled and requested
+            if vblank_enabled && vblank_requested {
+                self.memory[0xFF0F] &= !0x01; // Clear VBlank flag
+                self.ime = false;
+                self.call_address(0x0040);
+                self.cycles = 4;
+                return;
+            }
+            if lcd_enabled && lcd_requested {
+                self.memory[0xFF0F] &= !0x02; // Clear LCD flag
+                self.ime = false;
+                self.call_address(0x0048);
+                self.cycles = 4;
+                return;
+            }
+            if timer_enabled && timer_requested {
+                self.memory[0xFF0F] &= !0x04; // Clear Timer flag
+                self.ime = false;
+                self.call_address(0x0050);
+                self.cycles = 4;
+                return;
+            }
+            if serial_enabled && serial_requested {
+                self.memory[0xFF0F] &= !0x08; // Clear Serial flag
+                self.ime = false;
+                self.call_address(0x0058);
+                self.cycles = 4;
+                return;
+            }
+            if joypad_enabled && joypad_requested {
+                self.memory[0xFF0F] &= !0x10; // Clear Joypad flag
+                self.ime = false;
+                self.call_address(0x0060);
+                self.cycles = 4;
+                return;
+            }
+        }
+
+        // fetch decode execute
         if self.cycles == 0 {
             let opcode = self.memory[self.pc as usize]; 
                 println!("    Running opcode: 0x{:02X}", opcode);
@@ -1265,5 +1325,11 @@ impl CPU {
         let return_address = self.pc.wrapping_add(3);
         self.push_16bit_value(return_address);
         self.pc = self.get_16_bit_operand(self.pc);
+    }
+
+    fn call_address(&mut self, address: u16){
+        let return_address = self.pc.wrapping_add(3);
+        self.push_16bit_value(return_address);
+        self.pc = address;
     }
 }
