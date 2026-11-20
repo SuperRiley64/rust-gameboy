@@ -7,9 +7,9 @@ mod tests {
     }
 
     fn execute_instruction_until_done(cpu: &mut CPU, opcode: u8, operands: Vec<u8>) {
-        cpu.memory[cpu.pc as usize] = opcode;
+        cpu.bus.memory[cpu.pc as usize] = opcode;
         for (i, &op) in operands.iter().enumerate() {
-            cpu.memory[(cpu.pc as usize + 1 + i)] = op;
+            cpu.bus.memory[(cpu.pc as usize + 1 + i)] = op;
         }
 
         cpu.cycle(); 
@@ -21,7 +21,7 @@ mod tests {
     #[test]
     fn test_nop() {
         let mut cpu = setup_cpu();
-        cpu.memory[0] = 0x00;
+        cpu.bus.memory[0] = 0x00;
         cpu.cycle(); 
         assert_eq!(cpu.pc, 1);
         assert_eq!(cpu.cycles, 0);
@@ -30,7 +30,7 @@ mod tests {
     #[test]
     fn test_stop() {
         let mut cpu = setup_cpu();
-        cpu.memory[0] = 0x10;
+        cpu.bus.memory[0] = 0x10;
         cpu.cycle(); 
         assert_eq!(cpu.pc, 2);
         assert_eq!(cpu.cycles, 0);
@@ -39,7 +39,7 @@ mod tests {
     #[test]
     fn test_halt() {
         let mut cpu = setup_cpu();
-        cpu.memory[0] = 0x76;
+        cpu.bus.memory[0] = 0x76;
         cpu.cycle(); 
         assert_eq!(cpu.pc, 1);
         assert_eq!(cpu.cycles, 0);
@@ -104,10 +104,10 @@ mod tests {
     #[test]
     fn test_ld_a_a16() {
         let mut cpu = setup_cpu();
-        cpu.memory[0] = 0xFA;
-        cpu.memory[1] = 0x00;
-        cpu.memory[2] = 0x10;
-        cpu.memory[0x1000] = 0xBB;
+        cpu.bus.memory[0] = 0xFA;
+        cpu.bus.memory[1] = 0x00;
+        cpu.bus.memory[2] = 0x10;
+        cpu.bus.memory[0x1000] = 0xBB;
         execute_instruction_until_done(&mut cpu, 0xFA, vec![0x00, 0x10]);
         assert_eq!(cpu.a, 0xBB);
         assert_eq!(cpu.pc, 3);
@@ -116,9 +116,9 @@ mod tests {
     #[test]
     fn test_ld_a_a8() {
         let mut cpu = setup_cpu();
-        cpu.memory[0] = 0xF0;
-        cpu.memory[1] = 0x20;
-        cpu.memory[0x20] = 0xCC;
+        cpu.bus.memory[0] = 0xF0;
+        cpu.bus.memory[1] = 0x20;
+        cpu.bus.memory[0x20] = 0xCC;
         execute_instruction_until_done(&mut cpu, 0xF0, vec![0x20]);
         assert_eq!(cpu.a, 0xCC);
         assert_eq!(cpu.pc, 2);
@@ -128,8 +128,8 @@ mod tests {
     fn test_ld_a_c() {
         let mut cpu = setup_cpu();
         cpu.c = 0x30;
-        cpu.memory[0] = 0xF2;
-        cpu.memory[0xFF30] = 0xDD;
+        cpu.bus.memory[0] = 0xF2;
+        cpu.bus.memory[0xFF30] = 0xDD;
         execute_instruction_until_done(&mut cpu, 0xF2, vec![]);
         assert_eq!(cpu.a, 0xDD);
         assert_eq!(cpu.pc, 1);
@@ -140,8 +140,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.b = 0x10;
         cpu.c = 0x20;
-        cpu.memory[0] = 0x0A;
-        cpu.memory[0x1020] = 0xEE;
+        cpu.bus.memory[0] = 0x0A;
+        cpu.bus.memory[0x1020] = 0xEE;
         execute_instruction_until_done(&mut cpu, 0x0A, vec![]);
         assert_eq!(cpu.a, 0xEE);
         assert_eq!(cpu.pc, 1);
@@ -152,8 +152,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.d = 0x30;
         cpu.e = 0x40;
-        cpu.memory[0] = 0x1A;
-        cpu.memory[0x3040] = 0xFF;
+        cpu.bus.memory[0] = 0x1A;
+        cpu.bus.memory[0x3040] = 0xFF;
         execute_instruction_until_done(&mut cpu, 0x1A, vec![]);
         assert_eq!(cpu.a, 0xFF);
         assert_eq!(cpu.pc, 1);
@@ -164,8 +164,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.h = 0x10;
         cpu.l = 0x20;
-        cpu.memory[0] = 0x2A;
-        cpu.memory[0x1020] = 0x11;
+        cpu.bus.memory[0] = 0x2A;
+        cpu.bus.memory[0x1020] = 0x11;
         execute_instruction_until_done(&mut cpu, 0x2A, vec![]);
         assert_eq!(cpu.a, 0x11);
         assert_eq!(cpu.pc, 1);
@@ -178,8 +178,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.h = 0x10;
         cpu.l = 0x20;
-        cpu.memory[0] = 0x3A;
-        cpu.memory[0x1020] = 0x22;
+        cpu.bus.memory[0] = 0x3A;
+        cpu.bus.memory[0x1020] = 0x22;
         execute_instruction_until_done(&mut cpu, 0x3A, vec![]);
         assert_eq!(cpu.a, 0x22);
         assert_eq!(cpu.pc, 1);
@@ -193,9 +193,9 @@ mod tests {
         cpu.a = 0x11;
         cpu.b = 0x12;
         cpu.c = 0x00;
-        cpu.memory[0] = 0x02;
+        cpu.bus.memory[0] = 0x02;
         execute_instruction_until_done(&mut cpu, 0x02, vec![]);
-        assert_eq!(cpu.memory[0x1200], 0x11);
+        assert_eq!(cpu.bus.memory[0x1200], 0x11);
         assert_eq!(cpu.pc, 1);
     }
 
@@ -205,9 +205,9 @@ mod tests {
         cpu.a = 0x22;
         cpu.d = 0x34;
         cpu.e = 0x00;
-        cpu.memory[0] = 0x12;
+        cpu.bus.memory[0] = 0x12;
         execute_instruction_until_done(&mut cpu, 0x12, vec![]);
-        assert_eq!(cpu.memory[0x3400], 0x22);
+        assert_eq!(cpu.bus.memory[0x3400], 0x22);
         assert_eq!(cpu.pc, 1);
     }
 
@@ -217,8 +217,8 @@ mod tests {
         cpu.a = 0x33;
         cpu.h = 0x10;
         cpu.l = 0x20;
-        cpu.memory[0] = 0x32;
-        cpu.memory[0x1020] = 0x33;
+        cpu.bus.memory[0] = 0x32;
+        cpu.bus.memory[0x1020] = 0x33;
         execute_instruction_until_done(&mut cpu, 0x32, vec![]);
         assert_eq!(cpu.h, 0x10);
         assert_eq!(cpu.l, 0x1F);
@@ -231,8 +231,8 @@ mod tests {
         cpu.a = 0x44;
         cpu.h = 0x10;
         cpu.l = 0x20;
-        cpu.memory[0] = 0x22;
-        cpu.memory[0x1020] = 0x44;
+        cpu.bus.memory[0] = 0x22;
+        cpu.bus.memory[0x1020] = 0x44;
         execute_instruction_until_done(&mut cpu, 0x22, vec![]);
         assert_eq!(cpu.h, 0x10);
         assert_eq!(cpu.l, 0x21);
@@ -243,12 +243,12 @@ mod tests {
     fn test_ld_a16_a() {
         let mut cpu = setup_cpu();
         cpu.a = 0x55;
-        cpu.memory[0] = 0xEA;
-        cpu.memory[1] = 0x00;
-        cpu.memory[2] = 0x30;
-        cpu.memory[0x3000] = 0x55;
+        cpu.bus.memory[0] = 0xEA;
+        cpu.bus.memory[1] = 0x00;
+        cpu.bus.memory[2] = 0x30;
+        cpu.bus.memory[0x3000] = 0x55;
         execute_instruction_until_done(&mut cpu, 0xEA, vec![0x00, 0x30]);
-        assert_eq!(cpu.memory[0x3000], 0x55);
+        assert_eq!(cpu.bus.memory[0x3000], 0x55);
         assert_eq!(cpu.pc, 3);
     }
 
@@ -257,10 +257,10 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.a = 0x66;
         cpu.c = 0x60;
-        cpu.memory[0] = 0xE2;
-        cpu.memory[0x60] = 0x66;
+        cpu.bus.memory[0] = 0xE2;
+        cpu.bus.memory[0x60] = 0x66;
         execute_instruction_until_done(&mut cpu, 0xE2, vec![]);
-        assert_eq!(cpu.memory[0x60], 0x66);
+        assert_eq!(cpu.bus.memory[0x60], 0x66);
         assert_eq!(cpu.pc, 1);
     }
 
@@ -268,11 +268,11 @@ mod tests {
     fn test_ld_a8_a() {
         let mut cpu = setup_cpu();
         cpu.a = 0x77;
-        cpu.memory[0] = 0xE0;
-        cpu.memory[1] = 0x80;
-        cpu.memory[0xFF80] = 0x77;
+        cpu.bus.memory[0] = 0xE0;
+        cpu.bus.memory[1] = 0x80;
+        cpu.bus.memory[0xFF80] = 0x77;
         execute_instruction_until_done(&mut cpu, 0xE0, vec![0x80]);
-        assert_eq!(cpu.memory[0xFF80], 0x77);
+        assert_eq!(cpu.bus.memory[0xFF80], 0x77);
         assert_eq!(cpu.pc, 2);
     }
 
@@ -281,10 +281,10 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.h = 0x10;
         cpu.l = 0x20;
-        cpu.memory[0] = 0x36;
-        cpu.memory[1] = 0x88;
+        cpu.bus.memory[0] = 0x36;
+        cpu.bus.memory[1] = 0x88;
         execute_instruction_until_done(&mut cpu, 0x36, vec![0x88]);
-        assert_eq!(cpu.memory[0x1020], 0x88);
+        assert_eq!(cpu.bus.memory[0x1020], 0x88);
         assert_eq!(cpu.pc, 2);
     }
 
@@ -299,37 +299,37 @@ mod tests {
         // LD (HL), B
         cpu.b = 0x99;
         execute_instruction_until_done(&mut cpu, 0x70, vec![]);
-        assert_eq!(cpu.memory[0x1220], 0x99);
+        assert_eq!(cpu.bus.memory[0x1220], 0x99);
         assert_eq!(cpu.pc, 1);
 
         // LD (HL), C
         cpu.c = 0xAA;
         execute_instruction_until_done(&mut cpu, 0x71, vec![]);
-        assert_eq!(cpu.memory[0x1220], 0xAA);
+        assert_eq!(cpu.bus.memory[0x1220], 0xAA);
         assert_eq!(cpu.pc, 2);
 
         // LD (HL), D
         cpu.d = 0xBB;
         execute_instruction_until_done(&mut cpu, 0x72, vec![]);
-        assert_eq!(cpu.memory[0x1220], 0xBB);
+        assert_eq!(cpu.bus.memory[0x1220], 0xBB);
         assert_eq!(cpu.pc, 3);
 
         // LD (HL), E
         cpu.e = 0xCC;
         execute_instruction_until_done(&mut cpu, 0x73, vec![]);
-        assert_eq!(cpu.memory[0x1220], 0xCC);
+        assert_eq!(cpu.bus.memory[0x1220], 0xCC);
         assert_eq!(cpu.pc, 4);
 
         // LD (HL), H
         cpu.h = 0xDD;
         execute_instruction_until_done(&mut cpu, 0x74, vec![]);
-        assert_eq!(cpu.memory[0xDD20], 0xDD);
+        assert_eq!(cpu.bus.memory[0xDD20], 0xDD);
         assert_eq!(cpu.pc, 5);
 
         // LD (HL), L
         cpu.l = 0xEE;
         execute_instruction_until_done(&mut cpu, 0x75, vec![]);
-        assert_eq!(cpu.memory[0xDDEE], 0xEE);
+        assert_eq!(cpu.bus.memory[0xDDEE], 0xEE);
         assert_eq!(cpu.pc, 6);
     }
 
@@ -340,9 +340,9 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.h = 0x10;
         cpu.l = 0x20;
-        cpu.memory[0x1020] = 0x33;
-        cpu.memory[0x3320] = 0x44;
-        cpu.memory[0x3344] = 0x55;
+        cpu.bus.memory[0x1020] = 0x33;
+        cpu.bus.memory[0x3320] = 0x44;
+        cpu.bus.memory[0x3344] = 0x55;
 
         // LD A, (HL)
         execute_instruction_until_done(&mut cpu, 0x7E, vec![]);
@@ -386,36 +386,36 @@ mod tests {
     fn test_ld_16bit_immediates() {
         let mut cpu = setup_cpu();
         // LD BC, nn
-        cpu.memory[0] = 0x01;
-        cpu.memory[1] = 0x10;
-        cpu.memory[2] = 0x20;
+        cpu.bus.memory[0] = 0x01;
+        cpu.bus.memory[1] = 0x10;
+        cpu.bus.memory[2] = 0x20;
         execute_instruction_until_done(&mut cpu, 0x01, vec![0x10, 0x20]);
         assert_eq!(cpu.b, 0x20);
         assert_eq!(cpu.c, 0x10);
         assert_eq!(cpu.pc, 3);
 
         // LD DE, nn
-        cpu.memory[3] = 0x11;
-        cpu.memory[4] = 0x30;
-        cpu.memory[5] = 0x40;
+        cpu.bus.memory[3] = 0x11;
+        cpu.bus.memory[4] = 0x30;
+        cpu.bus.memory[5] = 0x40;
         execute_instruction_until_done(&mut cpu, 0x11, vec![0x30, 0x40]);
         assert_eq!(cpu.d, 0x40);
         assert_eq!(cpu.e, 0x30);
         assert_eq!(cpu.pc, 6);
 
         // LD HL, nn
-        cpu.memory[6] = 0x21;
-        cpu.memory[7] = 0x50;
-        cpu.memory[8] = 0x60;
+        cpu.bus.memory[6] = 0x21;
+        cpu.bus.memory[7] = 0x50;
+        cpu.bus.memory[8] = 0x60;
         execute_instruction_until_done(&mut cpu, 0x21, vec![0x50, 0x60]);
         assert_eq!(cpu.h, 0x60);
         assert_eq!(cpu.l, 0x50);
         assert_eq!(cpu.pc, 9);
 
         // LD SP, nn
-        cpu.memory[9] = 0x31;
-        cpu.memory[10] = 0x70;
-        cpu.memory[11] = 0x80;
+        cpu.bus.memory[9] = 0x31;
+        cpu.bus.memory[10] = 0x70;
+        cpu.bus.memory[11] = 0x80;
         execute_instruction_until_done(&mut cpu, 0x31, vec![0x70, 0x80]);
         assert_eq!(cpu.sp, 0x8070);
         assert_eq!(cpu.pc, 12);
@@ -700,7 +700,7 @@ mod tests {
         cpu.h = 0x00;
         cpu.l = 0x10;
         cpu.f = 0x00; // CY = 0
-        cpu.memory[0x0010] = 0x02;
+        cpu.bus.memory[0x0010] = 0x02;
         
         execute_instruction_until_done(&mut cpu, 0x8E, vec![]);
         
@@ -713,7 +713,7 @@ mod tests {
         cpu.h = 0x00;
         cpu.l = 0x10;
         cpu.f = 0x10; // CY = 1
-        cpu.memory[0x0010] = 0x02;
+        cpu.bus.memory[0x0010] = 0x02;
         
         execute_instruction_until_done(&mut cpu, 0x8E, vec![]);
         
@@ -726,7 +726,7 @@ mod tests {
         cpu.h = 0x00;
         cpu.l = 0x10;
         cpu.f = 0x10; // CY = 1
-        cpu.memory[0x0010] = 0x01;
+        cpu.bus.memory[0x0010] = 0x01;
         
         execute_instruction_until_done(&mut cpu, 0x8E, vec![]);
         
@@ -936,7 +936,7 @@ mod tests {
         cpu.h = 0x10;
         cpu.l = 0x20;
         cpu.a = 0xFF;
-        cpu.memory[0x1020] = 0x0F;
+        cpu.bus.memory[0x1020] = 0x0F;
         execute_instruction_until_done(&mut cpu, 0xA6, vec![]);
         assert_eq!(cpu.a, 0x0F);
         assert_eq!(cpu.pc, 7);
@@ -998,7 +998,7 @@ mod tests {
         cpu.h = 0x10;
         cpu.l = 0x20;
         cpu.a = 0xAA;
-        cpu.memory[0x1020] = 0x55;
+        cpu.bus.memory[0x1020] = 0x55;
         execute_instruction_until_done(&mut cpu, 0xAE, vec![]);
         assert_eq!(cpu.a, 0xFF);
         assert_eq!(cpu.pc, 7);
@@ -1062,7 +1062,7 @@ mod tests {
         cpu.h = 0x10;
         cpu.l = 0x20;
         cpu.a = 0x00;
-        cpu.memory[0x1020] = 0x44;
+        cpu.bus.memory[0x1020] = 0x44;
         execute_instruction_until_done(&mut cpu, 0xB6, vec![]);
         assert_eq!(cpu.a, 0x44);
         assert_eq!(cpu.pc, 7);
@@ -1181,7 +1181,7 @@ mod tests {
         // Expected: A = 0x60, Z=1
         cpu.h = 0x20;
         cpu.l = 0x00;
-        cpu.memory[0x2000] = 0x60;
+        cpu.bus.memory[0x2000] = 0x60;
         cpu.a = 0x60;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xBE, vec![]);
@@ -1192,7 +1192,7 @@ mod tests {
         // A = 0x60, Memory[0x2000] = 0x70
         // Expected: A = 0x60, Z=0
         cpu.a = 0x60;
-        cpu.memory[0x2000] = 0x70;
+        cpu.bus.memory[0x2000] = 0x70;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xBE, vec![]);
         assert_eq!(cpu.a, 0x60);
@@ -1272,7 +1272,7 @@ mod tests {
         cpu.h = 0x10;
         cpu.l = 0x00;
         cpu.a = 0x02;
-        cpu.memory[0x1000] = 0x05;
+        cpu.bus.memory[0x1000] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x86, vec![]);
         assert_eq!(cpu.a, 0x07);
         assert_eq!(cpu.f & 0x80, 0x00); // Zero clear
@@ -1282,7 +1282,7 @@ mod tests {
         // A = 0x0F, (HL) = 0x1000, memory[0x1000] = 0x01
         // Expected: A = 0x10, Half-Carry set
         cpu.a = 0x0F;
-        cpu.memory[0x1000] = 0x01;
+        cpu.bus.memory[0x1000] = 0x01;
         execute_instruction_until_done(&mut cpu, 0x86, vec![]);
         assert_eq!(cpu.a, 0x10);
         assert_eq!(cpu.f & 0x20, 0x20); // Half-Carry set
@@ -1428,7 +1428,7 @@ mod tests {
         // A = 0xFE, d8 = 0x02
         // Expected: A = 0x00, C=1, HC=1, Z=1
         cpu.a = 0xFE;
-        cpu.memory[1] = 0x02; // Assuming PC is 0
+        cpu.bus.memory[1] = 0x02; // Assuming PC is 0
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xC6, vec![]);
         assert_eq!(cpu.a, 0x00);
@@ -1442,7 +1442,7 @@ mod tests {
         // A = 0xFE, d8 = 0x01, Carry = 1
         // Expected: A = 0x00, C=1, HC=1, Z=1
         cpu.a = 0xFE;
-        cpu.memory[1] = 0x01;
+        cpu.bus.memory[1] = 0x01;
         cpu.f = 0x10; // Carry set
         execute_instruction_until_done(&mut cpu, 0xCE, vec![]);
         assert_eq!(cpu.a, 0x00);
@@ -1456,7 +1456,7 @@ mod tests {
         // A = 0x00, d8 = 0x01
         // Expected: A = 0xFF, C=1, HC=1, Z=0
         cpu.a = 0x00;
-        cpu.memory[1] = 0x01;
+        cpu.bus.memory[1] = 0x01;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xD6, vec![]);
         assert_eq!(cpu.a, 0xFF);
@@ -1470,7 +1470,7 @@ mod tests {
         // A = 0x00, d8 = 0x01, Carry = 1
         // Expected: A = 0xFE, C=1, HC=1, Z=0
         cpu.a = 0x00;
-        cpu.memory[1] = 0x01;
+        cpu.bus.memory[1] = 0x01;
         cpu.f = 0x10; // Carry set
         execute_instruction_until_done(&mut cpu, 0xDE, vec![]);
         assert_eq!(cpu.a, 0xFE);
@@ -1484,7 +1484,7 @@ mod tests {
         // A = 0xFF, d8 = 0x0F
         // Expected: A = 0x0F, HC=1, C=0, S=0
         cpu.a = 0xFF;
-        cpu.memory[1] = 0x0F;
+        cpu.bus.memory[1] = 0x0F;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xE6, vec![]);
         assert_eq!(cpu.a, 0x0F);
@@ -1498,7 +1498,7 @@ mod tests {
         // A = 0xFF, d8 = 0xFF
         // Expected: A = 0x00, HC=1, C=0, S=0
         cpu.a = 0xFF;
-        cpu.memory[1] = 0xFF;
+        cpu.bus.memory[1] = 0xFF;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xEE, vec![]);
         assert_eq!(cpu.a, 0x00);
@@ -1512,7 +1512,7 @@ mod tests {
         // A = 0x0F, d8 = 0xF0
         // Expected: A = 0xFF, HC=1, C=0, S=0
         cpu.a = 0x0F;
-        cpu.memory[1] = 0xF0;
+        cpu.bus.memory[1] = 0xF0;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xF6, vec![]);
         assert_eq!(cpu.a, 0xFF);
@@ -1527,7 +1527,7 @@ mod tests {
         // A = 0x05, d8 = 0x05
         // Expected: A = 0x05, Z=1
         cpu.a = 0x05;
-        cpu.memory[1] = 0x05;
+        cpu.bus.memory[1] = 0x05;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xFE, vec![0x05]);
         assert_eq!(cpu.a, 0x05);
@@ -1537,7 +1537,7 @@ mod tests {
         // A = 0x05, d8 = 0x06
         // Expected: A = 0x05, Z=0
         cpu.a = 0x05;
-        cpu.memory[1] = 0x06;
+        cpu.bus.memory[1] = 0x06;
         cpu.f = 0x00;
         execute_instruction_until_done(&mut cpu, 0xFE, vec![0x06]);
         assert_eq!(cpu.a, 0x05);
@@ -1556,8 +1556,8 @@ mod tests {
         // SP becomes 0x1FFE, memory[0x1FFF]=0x11, memory[0x1FFE]=0x22
         execute_instruction_until_done(&mut cpu, 0xC5, vec![]);
         assert_eq!(cpu.sp, 0x1FFE);
-        assert_eq!(cpu.memory[0x1FFF], 0x11);
-        assert_eq!(cpu.memory[0x1FFE], 0x22);
+        assert_eq!(cpu.bus.memory[0x1FFF], 0x11);
+        assert_eq!(cpu.bus.memory[0x1FFE], 0x22);
 
         // POP BC (0xC1)
         // SP becomes 0x2000, B=0x11, C=0x22
@@ -1576,8 +1576,8 @@ mod tests {
         // SP becomes 0x2FFE, memory[0x2FFF]=0x33, memory[0x2FFE]=0x44
         execute_instruction_until_done(&mut cpu, 0xD5, vec![]);
         assert_eq!(cpu.sp, 0x2FFE);
-        assert_eq!(cpu.memory[0x2FFF], 0x33);
-        assert_eq!(cpu.memory[0x2FFE], 0x44);
+        assert_eq!(cpu.bus.memory[0x2FFF], 0x33);
+        assert_eq!(cpu.bus.memory[0x2FFE], 0x44);
 
         // POP DE (0xD1)
         // SP becomes 0x3000, D=0x33, E=0x44
@@ -1596,8 +1596,8 @@ mod tests {
         // SP becomes 0x3FFE, memory[0x3FFF]=0x55, memory[0x3FFE]=0x66
         execute_instruction_until_done(&mut cpu, 0xE5, vec![]);
         assert_eq!(cpu.sp, 0x3FFE);
-        assert_eq!(cpu.memory[0x3FFF], 0x55);
-        assert_eq!(cpu.memory[0x3FFE], 0x66);
+        assert_eq!(cpu.bus.memory[0x3FFF], 0x55);
+        assert_eq!(cpu.bus.memory[0x3FFE], 0x66);
 
         // POP HL (0xE1)
         // SP becomes 0x4000, H=0x55, L=0x66
@@ -1616,8 +1616,8 @@ mod tests {
         // SP becomes 0x4FFE, memory[0x4FFF]=0x77, memory[0x4FFE]=0x88
         execute_instruction_until_done(&mut cpu, 0xF5, vec![]);
         assert_eq!(cpu.sp, 0x4FFE);
-        assert_eq!(cpu.memory[0x4FFF], 0x77);
-        assert_eq!(cpu.memory[0x4FFE], 0x88);
+        assert_eq!(cpu.bus.memory[0x4FFF], 0x77);
+        assert_eq!(cpu.bus.memory[0x4FFE], 0x88);
 
         // POP AF (0xF1)
         // SP becomes 0x5000, A=0x77, F=0x88
@@ -1631,9 +1631,9 @@ mod tests {
     fn test_jp_a16() {
         let mut cpu = setup_cpu();
         // JP nn
-        cpu.memory[0] = 0xC3;
-        cpu.memory[1] = 0x20;
-        cpu.memory[2] = 0x10;
+        cpu.bus.memory[0] = 0xC3;
+        cpu.bus.memory[1] = 0x20;
+        cpu.bus.memory[2] = 0x10;
         execute_instruction_until_done(&mut cpu, 0xC3, vec![0x20, 0x10]);
         assert_eq!(cpu.pc, 0x1020);
     }
@@ -1644,9 +1644,9 @@ mod tests {
         // 0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.cycles = 2 } }
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // Z = 0
-        cpu.memory[0] = 0xC2;
-        cpu.memory[1] = 0x10; // Low byte
-        cpu.memory[2] = 0x20; // High byte
+        cpu.bus.memory[0] = 0xC2;
+        cpu.bus.memory[1] = 0x10; // Low byte
+        cpu.bus.memory[2] = 0x20; // High byte
         
         execute_instruction_until_done(&mut cpu, 0xC2, vec![0x10, 0x20]);
         
@@ -1658,9 +1658,9 @@ mod tests {
         // Case 2: Zero flag IS set (Condition Not Met - No Jump)
         let mut cpu = setup_cpu();
         cpu.f = 0x80; // Z = 1
-        cpu.memory[0] = 0xC2;
-        cpu.memory[1] = 0x10;
-        cpu.memory[2] = 0x20;
+        cpu.bus.memory[0] = 0xC2;
+        cpu.bus.memory[1] = 0x10;
+        cpu.bus.memory[2] = 0x20;
         
         execute_instruction_until_done(&mut cpu, 0xC2, vec![0x10, 0x20]);
         
@@ -1674,9 +1674,9 @@ mod tests {
         // 0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.cycles = 2 } }
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // C = 0
-        cpu.memory[0] = 0xD2;
-        cpu.memory[1] = 0x30;
-        cpu.memory[2] = 0x40;
+        cpu.bus.memory[0] = 0xD2;
+        cpu.bus.memory[1] = 0x30;
+        cpu.bus.memory[2] = 0x40;
         
         execute_instruction_until_done(&mut cpu, 0xD2, vec![0x30, 0x40]);
         
@@ -1688,9 +1688,9 @@ mod tests {
         // Case 2: Carry flag IS set (Condition Not Met - No Jump)
         let mut cpu = setup_cpu();
         cpu.f = 0x10; // C = 1
-        cpu.memory[0] = 0xD2;
-        cpu.memory[1] = 0x30;
-        cpu.memory[2] = 0x40;
+        cpu.bus.memory[0] = 0xD2;
+        cpu.bus.memory[1] = 0x30;
+        cpu.bus.memory[2] = 0x40;
         
         execute_instruction_until_done(&mut cpu, 0xD2, vec![0x30, 0x40]);
         
@@ -1704,9 +1704,9 @@ mod tests {
         // 0xCA => { if self.f & 0x80 == 0x80 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } }
         let mut cpu = setup_cpu();
         cpu.f = 0x80; // Z = 1
-        cpu.memory[0] = 0xCA;
-        cpu.memory[1] = 0x10; // Low byte
-        cpu.memory[2] = 0x20; // High byte
+        cpu.bus.memory[0] = 0xCA;
+        cpu.bus.memory[1] = 0x10; // Low byte
+        cpu.bus.memory[2] = 0x20; // High byte
         
         execute_instruction_until_done(&mut cpu, 0xCA, vec![0x10, 0x20]);
         
@@ -1718,9 +1718,9 @@ mod tests {
         // Case 2: Zero flag is NOT set (Condition Not Met - No Jump)
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // Z = 0
-        cpu.memory[0] = 0xCA;
-        cpu.memory[1] = 0x10;
-        cpu.memory[2] = 0x20;
+        cpu.bus.memory[0] = 0xCA;
+        cpu.bus.memory[1] = 0x10;
+        cpu.bus.memory[2] = 0x20;
         
         execute_instruction_until_done(&mut cpu, 0xCA, vec![0x10, 0x20]);
         
@@ -1734,9 +1734,9 @@ mod tests {
         // 0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } }
         let mut cpu = setup_cpu();
         cpu.f = 0x10; // C = 1
-        cpu.memory[0] = 0xDA;
-        cpu.memory[1] = 0x30;
-        cpu.memory[2] = 0x40;
+        cpu.bus.memory[0] = 0xDA;
+        cpu.bus.memory[1] = 0x30;
+        cpu.bus.memory[2] = 0x40;
         
         execute_instruction_until_done(&mut cpu, 0xDA, vec![0x30, 0x40]);
         
@@ -1748,9 +1748,9 @@ mod tests {
         // Case 2: Carry flag is NOT set (Condition Not Met - No Jump)
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // C = 0
-        cpu.memory[0] = 0xDA;
-        cpu.memory[1] = 0x30;
-        cpu.memory[2] = 0x40;
+        cpu.bus.memory[0] = 0xDA;
+        cpu.bus.memory[1] = 0x30;
+        cpu.bus.memory[2] = 0x40;
         
         execute_instruction_until_done(&mut cpu, 0xDA, vec![0x30, 0x40]);
         
@@ -1840,32 +1840,32 @@ mod tests {
 
         // --- Test 0x09: ADD BC to HL, SP++ ---
         // LD HL, 0x1000
-        cpu.memory[0] = 0x21;
+        cpu.bus.memory[0] = 0x21;
         execute_instruction_until_done(&mut cpu, 0x21, vec![0x00, 0x10]);
         assert_eq!(cpu.h, 0x10);
         assert_eq!(cpu.l, 0x00);
 
         // LD BC, 0x2000
-        cpu.memory[3] = 0x01;
+        cpu.bus.memory[3] = 0x01;
         execute_instruction_until_done(&mut cpu, 0x01, vec![0x00, 0x20]);
         assert_eq!(cpu.b, 0x20);
         assert_eq!(cpu.c, 0x00);
 
         // ADD BC to HL (0x09)
-        cpu.memory[6] = 0x09;
+        cpu.bus.memory[6] = 0x09;
         execute_instruction_until_done(&mut cpu, 0x09, vec![]);
         assert_eq!(cpu.h, 0x30);
         assert_eq!(cpu.l, 0x00);
 
         // --- Test 0x19: ADD DE to HL ---
         // LD DE, 0x3000
-        cpu.memory[7] = 0x11;
+        cpu.bus.memory[7] = 0x11;
         execute_instruction_until_done(&mut cpu, 0x11, vec![0x00, 0x30]);
         assert_eq!(cpu.d, 0x30);
         assert_eq!(cpu.e, 0x00);
 
         // ADD DE to HL (0x19)
-        cpu.memory[10] = 0x19;
+        cpu.bus.memory[10] = 0x19;
         execute_instruction_until_done(&mut cpu, 0x19, vec![]);
         // Expected: HL (0x1000) + DE (0x3000) = 0x4000
         assert_eq!(cpu.h, 0x60);
@@ -1873,13 +1873,13 @@ mod tests {
 
         // --- Test 0x29: ADD HL to HL ---
         // LD HL, 0x4000
-        cpu.memory[11] = 0x21;
+        cpu.bus.memory[11] = 0x21;
         execute_instruction_until_done(&mut cpu, 0x21, vec![0x00, 0x40]);
         assert_eq!(cpu.h, 0x40);
         assert_eq!(cpu.l, 0x00);
 
         // ADD HL to HL (0x29)
-        cpu.memory[14] = 0x29;
+        cpu.bus.memory[14] = 0x29;
         execute_instruction_until_done(&mut cpu, 0x29, vec![]);
         // Expected: HL (0x4000) + HL (0x4000) = 0x8000
         assert_eq!(cpu.h, 0x80);
@@ -1887,12 +1887,12 @@ mod tests {
 
         // --- Test 0x39: ADD SP to HL ---
         // LD SP, 0x5000
-        cpu.memory[15] = 0x31;
+        cpu.bus.memory[15] = 0x31;
         execute_instruction_until_done(&mut cpu, 0x31, vec![0x00, 0x50]);
         assert_eq!(cpu.sp, 0x5000);
 
         // ADD SP to HL (0x39)
-        cpu.memory[18] = 0x39;
+        cpu.bus.memory[18] = 0x39;
         execute_instruction_until_done(&mut cpu, 0x39, vec![]);
         // Expected: HL (0x4000) + SP (0x5000) = 0x9000
         assert_eq!(cpu.h, 0xD0);
@@ -1903,12 +1903,12 @@ mod tests {
     fn test_ld_a16_sp() {
         let mut cpu = setup_cpu();
         cpu.sp = 0x1234;
-        cpu.memory[0] = 0x08;
-        cpu.memory[1] = 0x00;
-        cpu.memory[2] = 0x50;
+        cpu.bus.memory[0] = 0x08;
+        cpu.bus.memory[1] = 0x00;
+        cpu.bus.memory[2] = 0x50;
         execute_instruction_until_done(&mut cpu, 0x08, vec![0x00, 0x50]);
-        assert_eq!(cpu.memory[0x5000], 0x34);
-        assert_eq!(cpu.memory[0x5001], 0x12);
+        assert_eq!(cpu.bus.memory[0x5000], 0x34);
+        assert_eq!(cpu.bus.memory[0x5001], 0x12);
         assert_eq!(cpu.pc, 3);
     }
 
@@ -1933,8 +1933,8 @@ mod tests {
     fn test_jr_s8() {
         let mut cpu = setup_cpu();
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x18;
-        cpu.memory[0x1001] = 0xFF; // -1
+        cpu.bus.memory[0x1000] = 0x18;
+        cpu.bus.memory[0x1001] = 0xFF; // -1
         execute_instruction_until_done(&mut cpu, 0x18, vec![0xFF]);
         // PC should be 0x1000 + 2 - 1 = 0x1001
         assert_eq!(cpu.pc, 0x1001);
@@ -1945,8 +1945,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.f = 0x80; // Zero flag set
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x28;
-        cpu.memory[0x1001] = 0x05;
+        cpu.bus.memory[0x1000] = 0x28;
+        cpu.bus.memory[0x1001] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x28, vec![0x05]);
         // PC should be 0x1000 + 2 + 5 = 0x1007
         assert_eq!(cpu.pc, 0x1007);
@@ -1957,8 +1957,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // Zero flag clear
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x28;
-        cpu.memory[0x1001] = 0x05;
+        cpu.bus.memory[0x1000] = 0x28;
+        cpu.bus.memory[0x1001] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x28, vec![0x05]);
         // PC should be 0x1000 + 2 = 0x1002
         assert_eq!(cpu.pc, 0x1002);
@@ -1969,8 +1969,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.f = 0x80; // Zero flag set
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x20;
-        cpu.memory[0x1001] = 0x05;
+        cpu.bus.memory[0x1000] = 0x20;
+        cpu.bus.memory[0x1001] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x20, vec![0x05]);
         // PC should be 0x1000 + 2 = 0x1002
         assert_eq!(cpu.pc, 0x1002);
@@ -1981,8 +1981,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // Zero flag clear
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x20;
-        cpu.memory[0x1001] = 0x05;
+        cpu.bus.memory[0x1000] = 0x20;
+        cpu.bus.memory[0x1001] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x20, vec![0x05]);
         // PC should be 0x1000 + 2 + 5 = 0x1007
         assert_eq!(cpu.pc, 0x1007);
@@ -1993,8 +1993,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.f = 0x10; // carry flag set
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x38;
-        cpu.memory[0x1001] = 0x05;
+        cpu.bus.memory[0x1000] = 0x38;
+        cpu.bus.memory[0x1001] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x38, vec![0x05]);
         // PC should be 0x1000 + 2 + 5 = 0x1007
         assert_eq!(cpu.pc, 0x1007);
@@ -2005,8 +2005,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.f = 0x00; // carry flag clear
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x38;
-        cpu.memory[0x1001] = 0x05;
+        cpu.bus.memory[0x1000] = 0x38;
+        cpu.bus.memory[0x1001] = 0x05;
         execute_instruction_until_done(&mut cpu, 0x38, vec![0x05]);
         // PC should be 0x1000 + 2 = 0x1002
         assert_eq!(cpu.pc, 0x1002);
@@ -2020,7 +2020,7 @@ mod tests {
         // Binary: 1001 1111 => 0x9F
         cpu.f = 0xFF;
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x37;
+        cpu.bus.memory[0x1000] = 0x37;
         execute_instruction_until_done(&mut cpu, 0x37, vec![]);
         assert_eq!(cpu.f, 0x9F);
 
@@ -2030,7 +2030,7 @@ mod tests {
         // Binary: 1001 0000 => 0x90
         cpu.f = 0b11110000;
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x37;
+        cpu.bus.memory[0x1000] = 0x37;
         execute_instruction_until_done(&mut cpu, 0x37, vec![]);
         assert_eq!(cpu.f, 0x90);
     }
@@ -2045,7 +2045,7 @@ mod tests {
         // Expected: 1000 1000 => 0x88
         cpu.f = 0xF8;
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x3F;
+        cpu.bus.memory[0x1000] = 0x3F;
         execute_instruction_until_done(&mut cpu, 0x3F, vec![]);
         assert_eq!(cpu.f, 0x88);
 
@@ -2055,7 +2055,7 @@ mod tests {
         // Expected: 0001 1111 => 0x1F
         cpu.f = 0b01001111;
         cpu.pc = 0x1000;
-        cpu.memory[0x1000] = 0x3F;
+        cpu.bus.memory[0x1000] = 0x3F;
         execute_instruction_until_done(&mut cpu, 0x3F, vec![]);
         assert_eq!(cpu.f, 0x1F);
     }
@@ -2069,7 +2069,7 @@ mod tests {
         cpu1.a = 0x0A;
         cpu1.f = 0x00;
         cpu1.pc = 0x1000;
-        cpu1.memory[0x1000] = 0x27;
+        cpu1.bus.memory[0x1000] = 0x27;
         execute_instruction_until_done(&mut cpu1, 0x27, vec![]);
         assert_eq!(cpu1.a, 0x10);
 
@@ -2080,7 +2080,7 @@ mod tests {
         cpu2.a = 0x09;
         cpu2.f = 0x10;
         cpu2.pc = 0x1000;
-        cpu2.memory[0x1000] = 0x27;
+        cpu2.bus.memory[0x1000] = 0x27;
         execute_instruction_until_done(&mut cpu2, 0x27, vec![]);
         assert_eq!(cpu2.a, 0x0F);
 
@@ -2091,7 +2091,7 @@ mod tests {
         cpu3.a = 0x08;
         cpu3.f = 0x10;
         cpu3.pc = 0x1000;
-        cpu3.memory[0x1000] = 0x27;
+        cpu3.bus.memory[0x1000] = 0x27;
         execute_instruction_until_done(&mut cpu3, 0x27, vec![]);
         assert_eq!(cpu3.a, 0x0E);
 
@@ -2102,7 +2102,7 @@ mod tests {
         cpu4.a = 0x09;
         cpu4.f = 0x00;
         cpu4.pc = 0x1000;
-        cpu4.memory[0x1000] = 0x27;
+        cpu4.bus.memory[0x1000] = 0x27;
         execute_instruction_until_done(&mut cpu4, 0x27, vec![]);
         assert_eq!(cpu4.a, 0x09);
 
@@ -2113,7 +2113,7 @@ mod tests {
         cpu5.a = 0x08;
         cpu5.f = 0x00;
         cpu5.pc = 0x1000;
-        cpu5.memory[0x1000] = 0x27;
+        cpu5.bus.memory[0x1000] = 0x27;
         execute_instruction_until_done(&mut cpu5, 0x27, vec![]);
         assert_eq!(cpu5.a, 0x08);
     }
@@ -2127,7 +2127,7 @@ mod tests {
         cpu1.a = 0xAA;
         cpu1.f = 0x00;
         cpu1.pc = 0x1000;
-        cpu1.memory[0x1000] = 0x2F;
+        cpu1.bus.memory[0x1000] = 0x2F;
         execute_instruction_until_done(&mut cpu1, 0x2F, vec![]);
         assert_eq!(cpu1.a, 0x55);
         assert_eq!(cpu1.f, 0x60);
@@ -2139,7 +2139,7 @@ mod tests {
         cpu2.a = 0x55;
         cpu2.f = 0x90;
         cpu2.pc = 0x1000;
-        cpu2.memory[0x1000] = 0x2F;
+        cpu2.bus.memory[0x1000] = 0x2F;
         execute_instruction_until_done(&mut cpu2, 0x2F, vec![]);
         assert_eq!(cpu2.a, 0xAA);
         assert_eq!(cpu2.f, 0xF0);
@@ -2151,7 +2151,7 @@ mod tests {
         cpu3.a = 0xAA;
         cpu3.f = 0x20;
         cpu3.pc = 0x1000;
-        cpu3.memory[0x1000] = 0x2F;
+        cpu3.bus.memory[0x1000] = 0x2F;
         execute_instruction_until_done(&mut cpu3, 0x2F, vec![]);
         assert_eq!(cpu3.a, 0x55);
         assert_eq!(cpu3.f, 0x60);
@@ -2166,11 +2166,11 @@ mod tests {
         cpu1.h = 0x00;
         cpu1.l = 0x00;
         cpu1.f = 0x00;
-        cpu1.memory[0x0000] = 0x05;
+        cpu1.bus.memory[0x0000] = 0x05;
         cpu1.pc = 0x1000;
-        cpu1.memory[0x1000] = 0x34;
+        cpu1.bus.memory[0x1000] = 0x34;
         execute_instruction_until_done(&mut cpu1, 0x34, vec![]);
-        assert_eq!(cpu1.memory[0x0000], 0x06);
+        assert_eq!(cpu1.bus.memory[0x0000], 0x06);
         assert_eq!(cpu1.f, 0x00);
 
         // Test Case 2: Increment triggering Half-Carry (bit 5)
@@ -2180,11 +2180,11 @@ mod tests {
         cpu2.h = 0x00;
         cpu2.l = 0x00;
         cpu2.f = 0x00;
-        cpu2.memory[0x0000] = 0x0F;
+        cpu2.bus.memory[0x0000] = 0x0F;
         cpu2.pc = 0x1000;
-        cpu2.memory[0x1000] = 0x34;
+        cpu2.bus.memory[0x1000] = 0x34;
         execute_instruction_until_done(&mut cpu2, 0x34, vec![]);
-        assert_eq!(cpu2.memory[0x0000], 0x10);
+        assert_eq!(cpu2.bus.memory[0x0000], 0x10);
         assert_eq!(cpu2.f, 0x20);
 
         // Test Case 3: Increment triggering Zero flag (bit 7)
@@ -2194,11 +2194,11 @@ mod tests {
         cpu3.h = 0x00;
         cpu3.l = 0x00;
         cpu3.f = 0x00;
-        cpu3.memory[0x0000] = 0xFF;
+        cpu3.bus.memory[0x0000] = 0xFF;
         cpu3.pc = 0x1000;
-        cpu3.memory[0x1000] = 0x34;
+        cpu3.bus.memory[0x1000] = 0x34;
         execute_instruction_until_done(&mut cpu3, 0x34, vec![]);
-        assert_eq!(cpu3.memory[0x0000], 0x00);
+        assert_eq!(cpu3.bus.memory[0x0000], 0x00);
         assert_eq!(cpu3.f, 0xA0);
 
         // Test Case 4: Preserving Carry flag (bit 4)
@@ -2208,11 +2208,11 @@ mod tests {
         cpu4.h = 0x00;
         cpu4.l = 0x00;
         cpu4.f = 0x10;
-        cpu4.memory[0x0000] = 0x01;
+        cpu4.bus.memory[0x0000] = 0x01;
         cpu4.pc = 0x1000;
-        cpu4.memory[0x1000] = 0x34;
+        cpu4.bus.memory[0x1000] = 0x34;
         execute_instruction_until_done(&mut cpu4, 0x34, vec![]);
-        assert_eq!(cpu4.memory[0x0000], 0x02);
+        assert_eq!(cpu4.bus.memory[0x0000], 0x02);
         assert_eq!(cpu4.f, 0x10);
     }
 
@@ -2225,11 +2225,11 @@ mod tests {
         cpu1.h = 0x00;
         cpu1.l = 0x00;
         cpu1.f = 0x00;
-        cpu1.memory[0x0000] = 0x05;
+        cpu1.bus.memory[0x0000] = 0x05;
         cpu1.pc = 0x1000;
-        cpu1.memory[0x1000] = 0x35;
+        cpu1.bus.memory[0x1000] = 0x35;
         execute_instruction_until_done(&mut cpu1, 0x35, vec![]);
-        assert_eq!(cpu1.memory[0x0000], 0x04);
+        assert_eq!(cpu1.bus.memory[0x0000], 0x04);
         assert_eq!(cpu1.f, 0x40);
 
         // Test Case 2: Decrement triggering Half-Carry (bit 5)
@@ -2239,11 +2239,11 @@ mod tests {
         cpu2.h = 0x00;
         cpu2.l = 0x00;
         cpu2.f = 0x00;
-        cpu2.memory[0x0000] = 0x00;
+        cpu2.bus.memory[0x0000] = 0x00;
         cpu2.pc = 0x1000;
-        cpu2.memory[0x1000] = 0x35;
+        cpu2.bus.memory[0x1000] = 0x35;
         execute_instruction_until_done(&mut cpu2, 0x35, vec![]);
-        assert_eq!(cpu2.memory[0x0000], 0xFF);
+        assert_eq!(cpu2.bus.memory[0x0000], 0xFF);
         assert_eq!(cpu2.f, 0x60);
 
         // Test Case 3: Decrement triggering Zero flag (bit 7)
@@ -2253,11 +2253,11 @@ mod tests {
         cpu3.h = 0x00;
         cpu3.l = 0x00;
         cpu3.f = 0x00;
-        cpu3.memory[0x0000] = 0x01;
+        cpu3.bus.memory[0x0000] = 0x01;
         cpu3.pc = 0x1000;
-        cpu3.memory[0x1000] = 0x35;
+        cpu3.bus.memory[0x1000] = 0x35;
         execute_instruction_until_done(&mut cpu3, 0x35, vec![]);
-        assert_eq!(cpu3.memory[0x0000], 0x00);
+        assert_eq!(cpu3.bus.memory[0x0000], 0x00);
         assert_eq!(cpu3.f, 0xC0);
 
         // Test Case 4: Preserving Carry flag (bit 4)
@@ -2267,11 +2267,11 @@ mod tests {
         cpu4.h = 0x00;
         cpu4.l = 0x00;
         cpu4.f = 0x10;
-        cpu4.memory[0x0000] = 0x01;
+        cpu4.bus.memory[0x0000] = 0x01;
         cpu4.pc = 0x1000;
-        cpu4.memory[0x1000] = 0x35;
+        cpu4.bus.memory[0x1000] = 0x35;
         execute_instruction_until_done(&mut cpu4, 0x35, vec![]);
-        assert_eq!(cpu4.memory[0x0000], 0x00);
+        assert_eq!(cpu4.bus.memory[0x0000], 0x00);
         assert_eq!(cpu4.f, 0xD0);
     }
 
@@ -2285,13 +2285,13 @@ mod tests {
         cpu.a = 0xAA;
         
         // Ensure the target memory location is initially 0x00
-        cpu.memory[0x1000] = 0x00;
+        cpu.bus.memory[0x1000] = 0x00;
         
         // Execute LD (HL), A
         execute_instruction_until_done(&mut cpu, 0x77, vec![]);
         
         // Assertions
-        assert_eq!(cpu.memory[0x1000], 0xAA); // Memory at 0x1000 should now be 0xAA
+        assert_eq!(cpu.bus.memory[0x1000], 0xAA); // Memory at 0x1000 should now be 0xAA
         assert_eq!(cpu.pc, 1);                // PC should advance by 1
     }
 
@@ -2299,26 +2299,26 @@ mod tests {
     fn test_call_a16() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFE;
-        cpu.memory[0x0000] = 0xCD;
-        cpu.memory[0x0001] = 0x00;
-        cpu.memory[0x0002] = 0x10;
+        cpu.bus.memory[0x0000] = 0xCD;
+        cpu.bus.memory[0x0001] = 0x00;
+        cpu.bus.memory[0x0002] = 0x10;
 
         // Execute CALL 0x1000
         execute_instruction_until_done(&mut cpu, 0xCD, vec![0x00, 0x10]);
 
         assert_eq!(cpu.pc, 0x1000);
         assert_eq!(cpu.sp, 0xFFFC);
-        assert_eq!(cpu.memory[0xFFFD], 0x00); // High byte of 0x0003
-        assert_eq!(cpu.memory[0xFFFC], 0x03); // Low byte of 0x0003
+        assert_eq!(cpu.bus.memory[0xFFFD], 0x00); // High byte of 0x0003
+        assert_eq!(cpu.bus.memory[0xFFFC], 0x03); // Low byte of 0x0003
     }
 
     #[test]
     fn test_call_nz_a16() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFE;
-        cpu.memory[0x0000] = 0xC4;
-        cpu.memory[0x0001] = 0x00;
-        cpu.memory[0x0002] = 0x10;
+        cpu.bus.memory[0x0000] = 0xC4;
+        cpu.bus.memory[0x0001] = 0x00;
+        cpu.bus.memory[0x0002] = 0x10;
 
         // Case 1: Z=0 (Jump)
         cpu.f = 0x00;
@@ -2328,9 +2328,9 @@ mod tests {
         // Case 2: Z=1 (No Jump)
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x80;
-        cpu2.memory[0x0000] = 0xC4;
-        cpu2.memory[0x0001] = 0x00;
-        cpu2.memory[0x0002] = 0x10;
+        cpu2.bus.memory[0x0000] = 0xC4;
+        cpu2.bus.memory[0x0001] = 0x00;
+        cpu2.bus.memory[0x0002] = 0x10;
         execute_instruction_until_done(&mut cpu2, 0xC4, vec![0x00, 0x10]);
         assert_eq!(cpu2.pc, 3); // PC increments by 3 (instruction length)
     }
@@ -2339,9 +2339,9 @@ mod tests {
     fn test_call_nc_a16() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFE;
-        cpu.memory[0x0000] = 0xD4;
-        cpu.memory[0x0001] = 0x00;
-        cpu.memory[0x0002] = 0x10;
+        cpu.bus.memory[0x0000] = 0xD4;
+        cpu.bus.memory[0x0001] = 0x00;
+        cpu.bus.memory[0x0002] = 0x10;
 
         // Case 1: C=0 (Jump)
         cpu.f = 0x00;
@@ -2351,9 +2351,9 @@ mod tests {
         // Case 2: C=1 (No Jump)
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x10;
-        cpu2.memory[0x0000] = 0xD4;
-        cpu2.memory[0x0001] = 0x00;
-        cpu2.memory[0x0002] = 0x10;
+        cpu2.bus.memory[0x0000] = 0xD4;
+        cpu2.bus.memory[0x0001] = 0x00;
+        cpu2.bus.memory[0x0002] = 0x10;
         execute_instruction_until_done(&mut cpu2, 0xD4, vec![0x00, 0x10]);
         assert_eq!(cpu2.pc, 3);
     }
@@ -2362,9 +2362,9 @@ mod tests {
     fn test_call_z_a16() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFE;
-        cpu.memory[0x0000] = 0xCC;
-        cpu.memory[0x0001] = 0x00;
-        cpu.memory[0x0002] = 0x10;
+        cpu.bus.memory[0x0000] = 0xCC;
+        cpu.bus.memory[0x0001] = 0x00;
+        cpu.bus.memory[0x0002] = 0x10;
 
         // Case 1: Z=1 (Jump)
         cpu.f = 0x80;
@@ -2374,9 +2374,9 @@ mod tests {
         // Case 2: Z=0 (No Jump)
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x00;
-        cpu2.memory[0x0000] = 0xCC;
-        cpu2.memory[0x0001] = 0x00;
-        cpu2.memory[0x0002] = 0x10;
+        cpu2.bus.memory[0x0000] = 0xCC;
+        cpu2.bus.memory[0x0001] = 0x00;
+        cpu2.bus.memory[0x0002] = 0x10;
         execute_instruction_until_done(&mut cpu2, 0xCC, vec![0x00, 0x10]);
         assert_eq!(cpu2.pc, 3);
     }
@@ -2385,9 +2385,9 @@ mod tests {
     fn test_call_c_a16() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFE;
-        cpu.memory[0x0000] = 0xDC;
-        cpu.memory[0x0001] = 0x00;
-        cpu.memory[0x0002] = 0x10;
+        cpu.bus.memory[0x0000] = 0xDC;
+        cpu.bus.memory[0x0001] = 0x00;
+        cpu.bus.memory[0x0002] = 0x10;
 
         // Case 1: C=1 (Jump)
         cpu.f = 0x10;
@@ -2397,9 +2397,9 @@ mod tests {
         // Case 2: C=0 (No Jump)
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x00;
-        cpu2.memory[0x0000] = 0xDC;
-        cpu2.memory[0x0001] = 0x00;
-        cpu2.memory[0x0002] = 0x10;
+        cpu2.bus.memory[0x0000] = 0xDC;
+        cpu2.bus.memory[0x0001] = 0x00;
+        cpu2.bus.memory[0x0002] = 0x10;
         execute_instruction_until_done(&mut cpu2, 0xDC, vec![0x00, 0x10]);
         assert_eq!(cpu2.pc, 3);
     }
@@ -2410,8 +2410,8 @@ mod tests {
     fn test_ret() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFC;
-        cpu.memory[0xFFFD] = 0x00; // High byte of return address
-        cpu.memory[0xFFFC] = 0x03; // Low byte of return address
+        cpu.bus.memory[0xFFFD] = 0x00; // High byte of return address
+        cpu.bus.memory[0xFFFC] = 0x03; // Low byte of return address
 
         execute_instruction_until_done(&mut cpu, 0xC9, vec![]);
 
@@ -2423,8 +2423,8 @@ mod tests {
     fn test_reti() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFC;
-        cpu.memory[0xFFFD] = 0x00;
-        cpu.memory[0xFFFC] = 0x03;
+        cpu.bus.memory[0xFFFD] = 0x00;
+        cpu.bus.memory[0xFFFC] = 0x03;
         
         execute_instruction_until_done(&mut cpu, 0xD9, vec![]);
 
@@ -2437,8 +2437,8 @@ mod tests {
     fn test_ret_nz() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFC;
-        cpu.memory[0xFFFD] = 0x00;
-        cpu.memory[0xFFFC] = 0x03;
+        cpu.bus.memory[0xFFFD] = 0x00;
+        cpu.bus.memory[0xFFFC] = 0x03;
 
         // Case 1: Z=0 (Jump/Pop)
         cpu.f = 0x00;
@@ -2450,8 +2450,8 @@ mod tests {
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x80;
         cpu2.sp = 0xFFFC;
-        cpu2.memory[0xFFFD] = 0x00;
-        cpu2.memory[0xFFFC] = 0x03;
+        cpu2.bus.memory[0xFFFD] = 0x00;
+        cpu2.bus.memory[0xFFFC] = 0x03;
         execute_instruction_until_done(&mut cpu2, 0xC0, vec![]);
         assert_eq!(cpu2.pc, 1); // PC increments by 1
         assert_eq!(cpu2.sp, 0xFFFC); // SP remains unchanged
@@ -2461,8 +2461,8 @@ mod tests {
     fn test_ret_nc() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFC;
-        cpu.memory[0xFFFD] = 0x00;
-        cpu.memory[0xFFFC] = 0x03;
+        cpu.bus.memory[0xFFFD] = 0x00;
+        cpu.bus.memory[0xFFFC] = 0x03;
 
         // Case 1: C=0 (Jump/Pop)
         cpu.f = 0x00;
@@ -2474,8 +2474,8 @@ mod tests {
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x10;
         cpu2.sp = 0xFFFC;
-        cpu2.memory[0xFFFD] = 0x00;
-        cpu2.memory[0xFFFC] = 0x03;
+        cpu2.bus.memory[0xFFFD] = 0x00;
+        cpu2.bus.memory[0xFFFC] = 0x03;
         execute_instruction_until_done(&mut cpu2, 0xD0, vec![]);
         assert_eq!(cpu2.pc, 1);
         assert_eq!(cpu2.sp, 0xFFFC);
@@ -2485,8 +2485,8 @@ mod tests {
     fn test_ret_z() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFC;
-        cpu.memory[0xFFFD] = 0x00;
-        cpu.memory[0xFFFC] = 0x03;
+        cpu.bus.memory[0xFFFD] = 0x00;
+        cpu.bus.memory[0xFFFC] = 0x03;
 
         // Case 1: Z=1 (Jump/Pop)
         cpu.f = 0x80;
@@ -2498,8 +2498,8 @@ mod tests {
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x00;
         cpu2.sp = 0xFFFC;
-        cpu2.memory[0xFFFD] = 0x00;
-        cpu2.memory[0xFFFC] = 0x03;
+        cpu2.bus.memory[0xFFFD] = 0x00;
+        cpu2.bus.memory[0xFFFC] = 0x03;
         execute_instruction_until_done(&mut cpu2, 0xC8, vec![]);
         assert_eq!(cpu2.pc, 1);
         assert_eq!(cpu2.sp, 0xFFFC);
@@ -2509,8 +2509,8 @@ mod tests {
     fn test_ret_c() {
         let mut cpu = setup_cpu();
         cpu.sp = 0xFFFC;
-        cpu.memory[0xFFFD] = 0x00;
-        cpu.memory[0xFFFC] = 0x03;
+        cpu.bus.memory[0xFFFD] = 0x00;
+        cpu.bus.memory[0xFFFC] = 0x03;
 
         // Case 1: C=1 (Jump/Pop)
         cpu.f = 0x10;
@@ -2522,8 +2522,8 @@ mod tests {
         let mut cpu2 = setup_cpu();
         cpu2.f = 0x00;
         cpu2.sp = 0xFFFC;
-        cpu2.memory[0xFFFD] = 0x00;
-        cpu2.memory[0xFFFC] = 0x03;
+        cpu2.bus.memory[0xFFFD] = 0x00;
+        cpu2.bus.memory[0xFFFC] = 0x03;
         execute_instruction_until_done(&mut cpu2, 0xD8, vec![]);
         assert_eq!(cpu2.pc, 1);
         assert_eq!(cpu2.sp, 0xFFFC);
@@ -2535,8 +2535,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.sp = 0x2000;
         // Opcode: 0xE8, s8: 0x05
-        cpu.memory[0] = 0xE8;
-        cpu.memory[1] = 0x05;
+        cpu.bus.memory[0] = 0xE8;
+        cpu.bus.memory[1] = 0x05;
         
         execute_instruction_until_done(&mut cpu, 0xE8, vec![0x05]);
         
@@ -2547,8 +2547,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.sp = 0x2000;
         // Opcode: 0xE8, s8: -0x05 (0xFB in 8-bit 2's complement)
-        cpu.memory[0] = 0xE8;
-        cpu.memory[1] = 0xFB;
+        cpu.bus.memory[0] = 0xE8;
+        cpu.bus.memory[1] = 0xFB;
         
         execute_instruction_until_done(&mut cpu, 0xE8, vec![0xFB]);
         
@@ -2559,8 +2559,8 @@ mod tests {
         let mut cpu = setup_cpu();
         cpu.sp = 0x0000;
         // Opcode: 0xE8, s8: -1 (0xFF in 8-bit 2's complement)
-        cpu.memory[0] = 0xE8;
-        cpu.memory[1] = 0xFF;
+        cpu.bus.memory[0] = 0xE8;
+        cpu.bus.memory[1] = 0xFF;
         
         execute_instruction_until_done(&mut cpu, 0xE8, vec![0xFF]);
         
@@ -2637,8 +2637,8 @@ mod tests {
             // The return address is PC + 1 = 0x1001.
             // The stack pointer should have decremented twice to 0xFFFC.
             assert_eq!(cpu_iter.sp, 0xFFFC);
-            assert_eq!(cpu_iter.memory[0xFFFD], 0x10); // High byte of 0x1001
-            assert_eq!(cpu_iter.memory[0xFFFC], 0x01); // Low byte of 0x1001
+            assert_eq!(cpu_iter.bus.memory[0xFFFD], 0x10); // High byte of 0x1001
+            assert_eq!(cpu_iter.bus.memory[0xFFFC], 0x01); // Low byte of 0x1001
         }
     }
 
@@ -2657,8 +2657,8 @@ fn test_all_cb_instructions() {
     cpu.sp = 0xFFFE;
     
     // Populate some memory for (HL) targets
-    cpu.memory[0x1000] = 0x55;
-    cpu.memory[0x1001] = 0x66;
+    cpu.bus.memory[0x1000] = 0x55;
+    cpu.bus.memory[0x1001] = 0x66;
 
     // Test every possible byte following the 0xCB prefix
     for op_byte in 0..=255 {
@@ -2666,8 +2666,8 @@ fn test_all_cb_instructions() {
         cpu.pc = pc;
         
         // Setup memory for the instruction
-        cpu.memory[pc as usize] = 0xCB;
-        cpu.memory[(pc + 1) as usize] = op_byte as u8;
+        cpu.bus.memory[pc as usize] = 0xCB;
+        cpu.bus.memory[(pc + 1) as usize] = op_byte as u8;
         
         // Execute the instruction
         cpu.cycle();

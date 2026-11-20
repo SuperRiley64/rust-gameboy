@@ -3,7 +3,7 @@ mod tests;
 use gameboy::cpu::CPU;
 
 fn main () {
-    println!("CPU under construction.");
+    println!("Initializing CPU");
     let mut cpu = CPU::new();
 
     //

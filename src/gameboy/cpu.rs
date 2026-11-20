@@ -31,7 +31,8 @@ pub struct CPU {
     pub halt: bool,
     pub sp: u16,
     pub pc: u16,
-    pub cycles: u8
+    pub cycles: u8,
+    pub bus: Bus
 }
 
 impl CPU {
@@ -50,6 +51,7 @@ impl CPU {
             sp: 0xFFFE, // fffe because ffff is the interrupt enable register
             pc: 0,
             cycles: 0,
+            bus: Bus::new()
         }
     }
 
@@ -60,8 +62,9 @@ impl CPU {
         // service interrupts
         if self.ime && self.cycles == 0 { // If interrupts are enabled...
             // Pull the Interrupt Enable Flags (IE) and Interrupt Requested Flags (IF)
-            let ie_reg = self.memory[0xFFFF];
-            let if_reg = self.memory[0xFF0F];
+            let ie_reg = self.bus.read(0xFFFF);
+            let if_reg = self.bus.read(0xFF0F);
+
 
             let vblank_enabled: bool = (ie_reg & 0b00000001) != 0;
             let lcd_enabled: bool = (ie_reg & 0b00000010) != 0;
@@ -77,35 +80,45 @@ impl CPU {
 
             // Service interrupts in order of priority, if enabled and requested
             if vblank_enabled && vblank_requested {
-                self.memory[0xFF0F] &= !0x01; // Clear VBlank flag
+                let val = self.bus.read(0xFF0F);
+                self.bus.write(0xFF0F, val & !0x01); // Clear VBlank flag
+
                 self.ime = false;
                 self.call_address(0x0040);
                 self.cycles = 4;
                 return;
             }
             if lcd_enabled && lcd_requested {
-                self.memory[0xFF0F] &= !0x02; // Clear LCD flag
+                let val = self.bus.read(0xFF0F);
+                self.bus.write(0xFF0F, val & !0x02); // Clear LCD flag
+
                 self.ime = false;
                 self.call_address(0x0048);
                 self.cycles = 4;
                 return;
             }
             if timer_enabled && timer_requested {
-                self.memory[0xFF0F] &= !0x04; // Clear Timer flag
+                let val = self.bus.read(0xFF0F);
+                self.bus.write(0xFF0F, val & !0x04); // Clear Timer flag
+
                 self.ime = false;
                 self.call_address(0x0050);
                 self.cycles = 4;
                 return;
             }
             if serial_enabled && serial_requested {
-                self.memory[0xFF0F] &= !0x08; // Clear Serial flag
+                let val = self.bus.read(0xFF0F);
+                self.bus.write(0xFF0F, val & !0x08); // Clear Serial flag
+
                 self.ime = false;
                 self.call_address(0x0058);
                 self.cycles = 4;
                 return;
             }
             if joypad_enabled && joypad_requested {
-                self.memory[0xFF0F] &= !0x10; // Clear Joypad flag
+                let val = self.bus.read(0xFF0F);
+                self.bus.write(0xFF0F, val & !0x10); // Clear Joypad flag
+
                 self.ime = false;
                 self.call_address(0x0060);
                 self.cycles = 4;
@@ -115,7 +128,7 @@ impl CPU {
 
         // fetch decode execute
         if self.cycles == 0 {
-            let opcode = self.memory[self.pc as usize]; 
+            let opcode = self.bus.read(self.pc as u16); 
                 println!("    Running opcode: 0x{:02X}", opcode);
             // cycles is always the documented cycles minus 1.
             match opcode {
@@ -124,13 +137,13 @@ impl CPU {
                 0x76 => { self.pc += 1; self.cycles = 0; } // HALT //TODO: Interrupt/Reset
                 
                 // 8-bit transfer instructions
-                0x3E => { self.a = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD A, n
-                0x06 => { self.b = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD B, n
-                0x0E => { self.c = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD C, n
-                0x16 => { self.d = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD D, n
-                0x1E => { self.e = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD E, n
-                0x26 => { self.h = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD H, n
-                0x2E => { self.l = self.memory[(self.pc as usize) + 1]; self.pc += 2; self.cycles = 1; } // LD L, n
+                0x3E => { self.a = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD A, n
+                0x06 => { self.b = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD B, n
+                0x0E => { self.c = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD C, n
+                0x16 => { self.d = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD D, n
+                0x1E => { self.e = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD E, n
+                0x26 => { self.h = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD H, n
+                0x2E => { self.l = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD L, n
                 
                 0xFA => { self.ld_a_from_a16(); self.pc += 3; self.cycles = 3;} // LD A, (a16)
                 0xF0 => { self.ld_a_from_a8(); self.pc += 2; self.cycles = 2;} // LD A, (a8)
@@ -153,13 +166,13 @@ impl CPU {
                 
                 0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; self.cycles = 3;} // LD (HL), d8 
                 
-                0x77 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.a; self.pc += 1; self.cycles = 1; } // LD (HL), A
-                0x70 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.b; self.pc += 1; self.cycles = 1; } // LD (HL), B
-                0x71 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.c; self.pc += 1; self.cycles = 1; } // LD (HL), C
-                0x72 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.d; self.pc += 1; self.cycles = 1; } // LD (HL), D
-                0x73 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.e; self.pc += 1; self.cycles = 1; } // LD (HL), E
-                0x74 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.h; self.pc += 1; self.cycles = 1; } // LD (HL), H
-                0x75 => { self.memory[((self.h as u16) << 8 | self.l as u16) as usize] = self.l; self.pc += 1; self.cycles = 1; } // LD (HL), L
+                0x77 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.a); self.pc += 1; self.cycles = 1; } // LD (HL), A
+                0x70 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.b); self.pc += 1; self.cycles = 1; } // LD (HL), B
+                0x71 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.c); self.pc += 1; self.cycles = 1; } // LD (HL), C
+                0x72 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.d); self.pc += 1; self.cycles = 1; } // LD (HL), D
+                0x73 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.e); self.pc += 1; self.cycles = 1; } // LD (HL), E
+                0x74 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.h); self.pc += 1; self.cycles = 1; } // LD (HL), H
+                0x75 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.l); self.pc += 1; self.cycles = 1; } // LD (HL), L
                 
                 0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; self.cycles = 1; } // LD A, (HL)
                 0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; self.cycles = 1; } // LD B, (HL)
@@ -175,8 +188,8 @@ impl CPU {
                 0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc += 3; self.cycles = 2; } // LD HL, nn
                 0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc += 3; self.cycles = 2; } // LD SP, nn
                 0xF9 => { self.sp = ((self.h as u16) << 8) | (self.l as u16); self.pc += 1; self.cycles = 1; } // LD SP, HL
-                0xF8 => { let s8 = self.memory[(self.pc + 1) as usize] as i8; let result_sp = self.sp.wrapping_add(s8 as u16); self.assign_16bit_register(Register16::HL, result_sp); self.pc += 2; self.cycles = 2; } // LD HL, SP+s8
-                0xE8 => { let s8 = self.memory[(self.pc + 1) as usize] as i8; self.sp = self.sp.wrapping_add(s8 as u16); self.pc += 2; self.cycles = 3; } // ADD SP, s8
+                0xF8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; let result_sp = self.sp.wrapping_add(s8 as u16); self.assign_16bit_register(Register16::HL, result_sp); self.pc += 2; self.cycles = 2; } // LD HL, SP+s8
+                0xE8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.sp = self.sp.wrapping_add(s8 as u16); self.pc += 2; self.cycles = 3; } // ADD SP, s8
 
                 // 8-bit load register instructions
                 0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, A
@@ -243,7 +256,7 @@ impl CPU {
                 0x83 => { self.a = self.add_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // ADD A, E
                 0x84 => { self.a = self.add_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADD A, H
                 0x85 => { self.a = self.add_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADD A, L
-                0x86 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.add_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // ADD A, (HL)
+                0x86 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.add_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // ADD A, (HL)
 
                 0x8F => { self.a = self.adc_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // ADC A, B
                 0x88 => { self.a = self.adc_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // ADC A, B
@@ -252,7 +265,7 @@ impl CPU {
                 0x8B => { self.a = self.adc_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // ADC A, E
                 0x8C => { self.a = self.adc_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADC A, H
                 0x8D => { self.a = self.adc_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADC A, L
-                0x8E => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.adc_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // ADC A, (HL)
+                0x8E => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.adc_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // ADC A, (HL)
 
                 0x97 => { self.a = self.sub_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // SUB A, A
                 0x90 => { self.a = self.sub_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // SUB A, B
@@ -261,7 +274,7 @@ impl CPU {
                 0x93 => { self.a = self.sub_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // SUB A, E
                 0x94 => { self.a = self.sub_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // SUB A, H
                 0x95 => { self.a = self.sub_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // SUB A, L
-                0x96 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.sub_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // SUB A, (HL)
+                0x96 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // SUB A, (HL)
 
                 0x9F => { self.a = self.sbc_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // SBC A, A
                 0x98 => { self.a = self.sbc_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // SBC A, B
@@ -270,7 +283,7 @@ impl CPU {
                 0x9B => { self.a = self.sbc_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // SBC A, E
                 0x9C => { self.a = self.sbc_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // SBC A, H
                 0x9D => { self.a = self.sbc_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // SBC A, L
-                0x9E => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.sbc_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // SBC A, (HL)
+                0x9E => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.sbc_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // SBC A, (HL)
 
                 0xA7 => { self.a = self.and_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // AND A, A
                 0xA0 => { self.a = self.and_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // AND A, B
@@ -279,7 +292,7 @@ impl CPU {
                 0xA3 => { self.a = self.and_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // AND A, E
                 0xA4 => { self.a = self.and_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // AND A, H
                 0xA5 => { self.a = self.and_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // AND A, L
-                0xA6 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.and_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // AND A, (HL)
+                0xA6 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.and_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // AND A, (HL)
 
                 0xAF => { self.a = self.xor_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // XOR A, A
                 0xA8 => { self.a = self.xor_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // XOR A, B
@@ -288,7 +301,7 @@ impl CPU {
                 0xAB => { self.a = self.xor_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // XOR A, E
                 0xAC => { self.a = self.xor_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // XOR A, H
                 0xAD => { self.a = self.xor_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // XOR A, L
-                0xAE => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.xor_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // XOR A, (HL)
+                0xAE => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.xor_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // XOR A, (HL)
 
                 0xB7 => { self.a = self.or_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // OR A, A
                 0xB0 => { self.a = self.or_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // OR A, B
@@ -297,7 +310,7 @@ impl CPU {
                 0xB3 => { self.a = self.or_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // OR A, E
                 0xB4 => { self.a = self.or_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // OR A, H
                 0xB5 => { self.a = self.or_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // OR A, L
-                0xB6 => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; self.a = self.or_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // OR A, (HL)
+                0xB6 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.or_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // OR A, (HL)
 
                 0xBF => { _ = self.sub_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // CP A, A
                 0xB8 => { _ = self.sub_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // CP A, B
@@ -306,24 +319,24 @@ impl CPU {
                 0xBB => { _ = self.sub_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // CP A, E
                 0xBC => { _ = self.sub_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // CP A, H
                 0xBD => { _ = self.sub_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // CP A, L
-                0xBE => {let addr = ((self.h as u16) << 8 | self.l as u16) as usize; _ = self.sub_8_bit(self.a, self.memory[addr]); self.pc += 1; self.cycles = 1; } // CP A, (HL)
+                0xBE => {let addr = ((self.h as u16) << 8 | self.l as u16); _ = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // CP A, (HL)
 
                 // immediate arithmetic instructions
-                0xC6 => { self.a = self.add_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // ADD d8
-                0xCE => { self.a = self.adc_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // ADC d8
-                0xD6 => { self.a = self.sub_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // SUB d8
-                0xDE => { self.a = self.sbc_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // SBC d8
-                0xE6 => { self.a = self.and_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // AND d8
-                0xEE => { self.a = self.xor_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // XOR d8
-                0xF6 => { self.a = self.or_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // OR d8
-                0xFE => { _ = self.sub_8_bit(self.a, self.memory[(self.pc + 1) as usize]); self.pc += 2; self.cycles = 1;} // CP d8
+                0xC6 => { self.a = self.add_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // ADD d8
+                0xCE => { self.a = self.adc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // ADC d8
+                0xD6 => { self.a = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // SUB d8
+                0xDE => { self.a = self.sbc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // SBC d8
+                0xE6 => { self.a = self.and_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // AND d8
+                0xEE => { self.a = self.xor_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // XOR d8
+                0xF6 => { self.a = self.or_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // OR d8
+                0xFE => { _ = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // CP d8
                 
                 // Jump instructions
-                0x18 => { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); self.cycles = 2; } // JR s8
-                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NZ s8
-                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NC s8
-                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR Z s8
-                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.memory[(self.pc as usize) + 1] as i8); } else { self.pc += 2; } self.cycles = 2; } // JR C s8
+                0x18 => { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } // JR s8
+                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NZ s8
+                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NC s8
+                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR Z s8
+                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR C s8
 
                 0xC3 => { self.jump_nn(); self.cycles = 2; } // JP a16
                 0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NZ a16
@@ -419,7 +432,7 @@ impl CPU {
                 // CB-prefixed instructions
                 0xCB => {
                     // The byte after the CB prefix selects the operation and operand.
-                    let op = self.memory[self.pc.wrapping_add(1) as usize];
+                    let op = self.bus.read(self.pc.wrapping_add(1) as u16);
                     let family = op >> 6;
                     let operation = (op >> 3) & 0b111;
                     let target = op & 0b111;
@@ -448,7 +461,7 @@ impl CPU {
                         3 => self.e,
                         4 => self.h,
                         5 => self.l,
-                        6 => self.memory[hl as usize],
+                        6 => self.bus.read(hl),
                         7 => self.a,
                         _ => unreachable!(),
                     };
@@ -483,7 +496,7 @@ impl CPU {
                                 3 => self.e = result,
                                 4 => self.h = result,
                                 5 => self.l = result,
-                                6 => self.memory[hl as usize] = result,
+                                6 => self.bus.write(hl, result),
                                 7 => self.a = result,
                                 _ => unreachable!(),
                             }
@@ -510,7 +523,7 @@ impl CPU {
                                 3 => self.e = result,
                                 4 => self.h = result,
                                 5 => self.l = result,
-                                6 => self.memory[hl as usize] = result,
+                                6 => self.bus.write(hl, result),
                                 7 => self.a = result,
                                 _ => unreachable!(),
                             }
@@ -526,7 +539,7 @@ impl CPU {
                                 3 => self.e = result,
                                 4 => self.h = result,
                                 5 => self.l = result,
-                                6 => self.memory[hl as usize] = result,
+                                6 => self.bus.write(hl, result),
                                 7 => self.a = result,
                                 _ => unreachable!(),
                             }
@@ -893,8 +906,8 @@ impl CPU {
         // According to your rules:
         // Byte at (pc + 1) is the lower-order byte (bits 0-7)
         // Byte at (pc + 2) is the higher-order byte (bits 8-15)
-        let low_byte = self.memory[self.pc as usize + 1] as u16;
-        let high_byte = self.memory[self.pc as usize + 2] as u16;
+        let low_byte = self.bus.read((self.pc + 1) as u16) as u16;
+        let high_byte = self.bus.read((self.pc + 2) as u16) as u16;
         
         // 2. Combine them into a 16-bit address
         // Shift high_byte left by 8 bits and combine with low_byte
@@ -1005,28 +1018,28 @@ impl CPU {
     }
 
     fn ld_a_from_a16(&mut self) {
-        self.a = self.memory[self.get_16_bit_operand(self.pc) as usize];
+        self.a = self.bus.read(self.get_16_bit_operand(self.pc) as u16);
     }
 
     fn ld_a_from_a8(&mut self) {
-        let addr = self.memory[(self.pc as usize) + 1] as usize;
-        self.a = self.memory[addr];
+        let addr = self.bus.read((self.pc + 1) as u16) as u16;
+        self.a = self.bus.read(addr);
     }
 
     fn ld_a_from_bc(&mut self) {
-        self.a = self.memory[((self.b as u16) << 8 | self.c as u16) as usize];
+        self.a = self.bus.read(((self.b as u16) << 8 | self.c as u16));
     }
 
     fn ld_a_from_c(&mut self) {
-        self.a = self.memory[self.c as usize];
+        self.a = self.bus.read(self.c as u16);
     }
 
     fn ld_a_from_de(&mut self) {
-        self.a = self.memory[((self.d as u16) << 8 | self.e as u16) as usize];
+        self.a = self.bus.read(((self.d as u16) << 8 | self.e as u16));
     }
 
     fn ld_a_from_c_high(&mut self) {
-        self.a = self.memory[(0xFF00 + self.c as u16) as usize];
+        self.a = self.bus.read(0xFF00 + self.c as u16);
     }
 
     fn ld_a_to_hl_minus(&mut self) {
@@ -1034,7 +1047,7 @@ impl CPU {
         let current_addr = ((self.h as u16) << 8 | self.l as u16) as usize;
 
         // 2. Store the contents of that memory location into A (the "Store" part)
-        self.a = self.memory[current_addr];
+        self.a = self.bus.read(current_addr as u16);
 
         // 3. Increment the contents of HL (The "Increment" part)
         let new_addr = (current_addr as u16) - 1;
@@ -1050,7 +1063,7 @@ impl CPU {
         // 2. Store the contents of Register A into that memory location
         // We check the bounds to ensure the address is valid (0-0xFFFF)
         if address <= 0xFFFF {
-            self.memory[address] = self.a;
+            self.bus.write(address as u16, self.a);
         }
 
         // 3. Decrement the HL pair
@@ -1069,7 +1082,7 @@ impl CPU {
         let current_addr = ((self.h as u16) << 8 | self.l as u16) as usize;
 
         // 2. Store the contents of that memory location into A (the "Store" part)
-        self.a = self.memory[current_addr];
+        self.a = self.bus.read(current_addr as u16);
 
         // 3. Increment the contents of HL (The "Increment" part)
         let new_addr = (current_addr as u16) + 1;
@@ -1079,27 +1092,28 @@ impl CPU {
 
     fn ld_memory_at_a16_from_a(&mut self) {
         let addr = self.get_16_bit_operand(self.pc);
-        self.memory[addr as usize] = self.a;
+        self.bus.write(addr, self.a);
     }
 
     fn ld_memory_at_a8_from_a(&mut self) {
         // 1. Fetch the 8-bit immediate operand from the memory 
         //    located immediately after the current Program Counter.
-        let immediate_value = self.memory[self.pc as usize + 1] as usize;
+        let immediate_value = self.bus.read((self.pc + 1) as u16);
+
 
         // 2. Construct the 16-bit address.
         //    The high byte is 0xFF (fixed) and the low byte is the immediate value.
-        let address = 0xFF00 + immediate_value;
+        let address: u16 = 0xFF00 + (immediate_value as u16);
 
         // 3. Store the contents of Register A into that calculated address.
         if address <= 0xFFFF {
-            self.memory[address] = self.a;
+            self.bus.write(address as u16, self.a);
         }
     }
 
     fn ld_memory_at_bc_from_a(&mut self) {
         let addr = (self.b as u16) << 8 | self.c as u16;
-        self.memory[addr as usize] = self.a;
+        self.bus.write(addr, self.a);
     }
 
     fn ld_memory_at_c_from_a(&mut self) {
@@ -1107,12 +1121,12 @@ impl CPU {
         // to the offset provided by register C.
         let address = 0xFF00 + (self.c as usize);
 
-        self.memory[address] = self.a;
+        self.bus.write(address as u16, self.a);
     }
 
     fn ld_memory_at_de_from_a(&mut self) {
         let addr = (self.d as u16) << 8 | self.e as u16;
-        self.memory[addr as usize] = self.a;
+        self.bus.write(addr, self.a);
     }
 
     fn ld_memory_at_hl_plus_from_a(&mut self) {
@@ -1122,9 +1136,7 @@ impl CPU {
 
         // 2. Store the contents of Register A into the CURRENT address
         // Check bounds to prevent the emulator from crashing.
-        if (current_hl as usize) < self.memory.len() {
-            self.memory[current_hl as usize] = self.a;
-        }
+        self.bus.write(current_hl, self.a);
 
         // 3. Increment the HL pair
         // We use wrapping_add(1) to ensure that if HL is 0xFFFF, 
@@ -1138,13 +1150,13 @@ impl CPU {
 
     fn ld_memory_at_hl_from_d8(&mut self) {
         let hl = ((self.h as u16) << 8) | self.l as u16;
-        let val = self.memory[(self.pc as usize) + 1];
-        self.memory[hl as usize] = val;
+        let val = self.bus.read((self.pc + 1) as u16);
+        self.bus.write(hl, val);
     }
 
     fn ld_reg_from_hl(&mut self, reg: Register8) {
         let addr = (self.h as u16) << 8 | self.l as u16;
-        let val = self.memory[addr as usize];
+        let val = self.bus.read(addr);
         match reg {
             Register8::A => self.a = val,
             Register8::B => self.b = val,
@@ -1160,14 +1172,14 @@ impl CPU {
         self.d = self.a;
     }
 
-    fn get_16_bit_operand(&mut self, index: u16) -> u16 {                                                                                                                                        
-        self.memory[(index + 1) as usize] as u16 | (self.memory[(index + 2) as usize] as u16) << 8
+    fn get_16_bit_operand(&self, index: u16) -> u16 {                                                                                                                                        
+        self.bus.read((index + 1) as u16) as u16 | (self.bus.read((index + 2) as u16) as u16) << 8
     }
 
     fn ld_memory_at_a16_from_sp(&mut self) {
         let addr = self.get_16_bit_operand(self.pc);
-        self.memory[addr as usize] = (self.sp & 0xFF) as u8;
-        self.memory[(addr + 1) as usize] = (self.sp >> 8) as u8;
+        self.bus.write(addr, (self.sp & 0xFF) as u8);
+        self.bus.write(addr + 1, (self.sp >> 8) as u8);
     }
 
     fn da_adjust(&mut self) {
@@ -1180,7 +1192,7 @@ impl CPU {
 
     fn inc_memory_at_hl(&mut self) {
         let addr = ((self.h as u16) << 8) | self.l as u16;
-        let val = self.memory[addr as usize];
+        let val = self.bus.read(addr);
         let result = val.wrapping_add(1);
 
         // Preserve Carry flag (bit 4)
@@ -1200,12 +1212,12 @@ impl CPU {
         // Clear Subtract flag (bit 6)
         self.f &= !0x40;
 
-        self.memory[addr as usize] = result;
+        self.bus.write(addr, result);
     }
 
     fn dec_memory_at_hl(&mut self) {
         let addr = ((self.h as u16) << 8) | self.l as u16;
-        let val = self.memory[addr as usize];
+        let val = self.bus.read(addr);
         let result = val.wrapping_sub(1);
 
         // Preserve Carry flag (bit 4)
@@ -1225,40 +1237,42 @@ impl CPU {
         // Set Subtract flag (bit 6)
         self.f |= 0x40;
 
-        self.memory[addr as usize] = result;
+        self.bus.write(addr, result);
     }
 
     // Helper method to pop a 16-bit value from the stack into a register pair
     fn pop(&mut self, reg: Register16) {
         match reg {
             Register16::BC => {
-                self.c = self.memory[self.sp as usize];
+                self.c = self.bus.read(self.sp as u16);
                 self.sp += 1;
-                self.b = self.memory[self.sp as usize];
+                self.b = self.bus.read(self.sp as u16);
                 self.sp += 1;
             }
             Register16::DE => {
-                self.e = self.memory[self.sp as usize];
+                self.e = self.bus.read(self.sp as u16);
                 self.sp += 1;
-                self.d = self.memory[self.sp as usize];
+                self.d = self.bus.read(self.sp as u16);
                 self.sp += 1;
             }
             Register16::HL => {
-                self.l = self.memory[self.sp as usize];
+                self.l = self.bus.read(self.sp as u16);
                 self.sp += 1;
-                self.h = self.memory[self.sp as usize];
+                self.h = self.bus.read(self.sp as u16);
                 self.sp += 1;
             }
             Register16::SP => {
-                let low = self.memory[self.sp as usize] as u16;
-                let high = self.memory[(self.sp + 1) as usize] as u16;
+                let low = self.bus.read(self.sp as u16) as u16;
+                self.sp += 1;
+                let high = self.bus.read(self.sp as u16) as u16;
+                self.sp += 1;
                 self.sp = (high << 8) | low;
                 self.sp += 2;
             }
             Register16::AF => {
-                self.f = self.memory[self.sp as usize];
+                self.f = self.bus.read(self.sp as u16);
                 self.sp += 1;
-                self.a = self.memory[self.sp as usize];
+                self.a = self.bus.read(self.sp as u16);
                 self.sp += 1;
             }
         }
@@ -1269,35 +1283,35 @@ impl CPU {
         match reg {
             Register16::BC => {
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.b;
+                self.bus.write(self.sp as u16, self.b);
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.c;
+                self.bus.write(self.sp as u16, self.c);
             }
             Register16::DE => {
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.d;
+                self.bus.write(self.sp as u16, self.d);
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.e;
+                self.bus.write(self.sp as u16, self.e);
             }
             Register16::HL => {
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.h;
+                self.bus.write(self.sp as u16, self.h);
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.l;
+                self.bus.write(self.sp as u16, self.l);
             }
             Register16::SP => {
                 let high = (self.sp >> 8) as u8;
                 let low = (self.sp & 0xFF) as u8;
                 self.sp -= 1;
-                self.memory[self.sp as usize] = high;
+                self.bus.write(self.sp as u16, high);
                 self.sp -= 1;
-                self.memory[self.sp as usize] = low;
+                self.bus.write(self.sp as u16, low);
             }
             Register16::AF => {
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.a;
+                self.bus.write(self.sp as u16, self.a);
                 self.sp -= 1;
-                self.memory[self.sp as usize] = self.f;
+                self.bus.write(self.sp as u16, self.f);
             }
         }
     }
@@ -1305,16 +1319,16 @@ impl CPU {
     // Helper method to push a raw 16-bit value onto the stack
     fn push_16bit_value(&mut self, value: u16) {
         self.sp -= 1;
-        self.memory[self.sp as usize] = (value >> 8) as u8;
+        self.bus.write(self.sp as u16, (value >> 8) as u8);
         self.sp -= 1;
-        self.memory[self.sp as usize] = (value & 0xFF) as u8;
+        self.bus.write(self.sp as u16, (value & 0xFF) as u8);
     }
 
     // Helper method to pop a raw 16-bit value from the stack
     fn pop_16bit_value(&mut self) -> u16 {
-        let low = self.memory[self.sp as usize] as u16;
+        let low = self.bus.read(self.sp as u16) as u16;
         self.sp += 1;
-        let high = self.memory[self.sp as usize] as u16;
+        let high = self.bus.read(self.sp as u16) as u16;
         self.sp += 1;
         (high << 8) | low
     }
