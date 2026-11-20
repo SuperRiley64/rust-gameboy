@@ -37,7 +37,7 @@ pub struct CPU {
 
 impl CPU {
     pub fn new() -> Self {
-        CPU {
+        Self {
             a: 0,
             f: 0,
             b: 0,
@@ -57,7 +57,10 @@ impl CPU {
 
     // Runs interrupts, halts, and the fetch decode execute cycle
     pub fn cycle(&mut self) {
-        println!("Cycle pc: {} | wait cycles: {}", self.pc, self.cycles);
+        //println!("Cycle pc: {} | wait cycles: {}", self.pc, self.cycles);
+
+        //TODO: tick serial from a reliable clock source
+        self.bus.serial.cycle();
 
         // service interrupts
         if self.ime && self.cycles == 0 { // If interrupts are enabled...
@@ -129,295 +132,296 @@ impl CPU {
         // fetch decode execute
         if self.cycles == 0 {
             let opcode = self.bus.read(self.pc as u16); 
-                println!("    Running opcode: 0x{:02X}", opcode);
+                //println!("    Running opcode: 0x{:02X}", opcode);
             // cycles is always the documented cycles minus 1.
             match opcode {
-                0x00 => { self.pc += 1; self.cycles = 0; } // NOP
-                0x10 => { self.pc += 2; self.cycles = 0; } // STOP //TODO: Handle RESET
-                0x76 => { self.pc += 1; self.cycles = 0; } // HALT //TODO: Interrupt/Reset
+                0x00 => { self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // NOP
+                0x10 => { self.pc = self.pc.wrapping_add(2); self.cycles = 0; } // STOP //TODO: Handle RESET
+                0x76 => { self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // HALT //TODO: Interrupt/Reset
                 
                 // 8-bit transfer instructions
-                0x3E => { self.a = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD A, n
-                0x06 => { self.b = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD B, n
-                0x0E => { self.c = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD C, n
-                0x16 => { self.d = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD D, n
-                0x1E => { self.e = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD E, n
-                0x26 => { self.h = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD H, n
-                0x2E => { self.l = self.bus.read((self.pc + 1) as u16); self.pc += 2; self.cycles = 1; } // LD L, n
+                0x3E => { self.a = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD A, n
+                0x06 => { self.b = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD B, n
+                0x0E => { self.c = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD C, n
+                0x16 => { self.d = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD D, n
+                0x1E => { self.e = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD E, n
+                0x26 => { self.h = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD H, n
+                0x2E => { self.l = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD L, n
                 
-                0xFA => { self.ld_a_from_a16(); self.pc += 3; self.cycles = 3;} // LD A, (a16)
-                0xF0 => { self.ld_a_from_a8(); self.pc += 2; self.cycles = 2;} // LD A, (a8)
+                0xFA => { self.ld_a_from_a16(); self.pc = self.pc.wrapping_add(3); self.cycles = 3;} // LD A, (a16)
+                0xF0 => { self.ld_a_from_a8(); self.pc = self.pc.wrapping_add(2); self.cycles = 2;} // LD A, (a8)
                 
-                0xF2 => { self.ld_a_from_c_high(); self.pc += 1; self.cycles = 1;} // LD A, (C)
-                0x0A => { self.ld_a_from_bc(); self.pc += 1; self.cycles = 1;} // LD A, (BC)
-                0x1A => { self.ld_a_from_de(); self.pc += 1; self.cycles = 1;} // LD A, (DE)
+                0xF2 => { self.ld_a_from_c_high(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD A, (C)
+                0x0A => { self.ld_a_from_bc(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD A, (BC)
+                0x1A => { self.ld_a_from_de(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD A, (DE)
                 
-                0x2A => { self.ld_a_to_hl_plus(); self.pc += 1; self.cycles = 1;} // LD A, (HL+)
-                0x3A => { self.ld_a_to_hl_minus(); self.pc += 1; self.cycles = 1;} // LD A, (HL-)
-                0x02 => { self.ld_memory_at_bc_from_a(); self.pc += 1; self.cycles = 1;} // LD (BC), A
-                0x12 => { self.ld_memory_at_de_from_a(); self.pc += 1; self.cycles = 1;} // LD (DE), A
+                0x2A => { self.ld_a_to_hl_plus(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD A, (HL+)
+                0x3A => { self.ld_a_to_hl_minus(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD A, (HL-)
+                0x02 => { self.ld_memory_at_bc_from_a(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD (BC), A
+                0x12 => { self.ld_memory_at_de_from_a(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD (DE), A
                 
-                0x32 => { self.ld_memory_at_hl_minus_from_a(); self.pc += 1; self.cycles = 1;} // LD (HL-), A
-                0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc += 1; self.cycles = 1;} // LD (HL+), A
-                0x08 => { self.ld_memory_at_a16_from_sp(); self.pc += 3; self.cycles = 4; } // LD (a16), SP
-                0xEA => { self.ld_memory_at_a16_from_a(); self.pc += 3; self.cycles = 3;} // LD (a16), A
-                0xE2 => { self.ld_memory_at_c_from_a(); self.pc += 1; self.cycles = 1;} // LD (C), A
-                0xE0 => { self.ld_memory_at_a8_from_a(); self.pc += 2; self.cycles = 2;} // LD (a8), A
+                0x32 => { self.ld_memory_at_hl_minus_from_a(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD (HL-), A
+                0x22 => { self.ld_memory_at_hl_plus_from_a(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD (HL+), A
+                0x08 => { self.ld_memory_at_a16_from_sp(); self.pc = self.pc.wrapping_add(3); self.cycles = 4; } // LD (a16), SP
+                0xEA => { self.ld_memory_at_a16_from_a(); self.pc = self.pc.wrapping_add(3); self.cycles = 3;} // LD (a16), A
+                0xE2 => { self.ld_memory_at_c_from_a(); self.pc = self.pc.wrapping_add(1); self.cycles = 1;} // LD (C), A
+                0xE0 => { self.ld_memory_at_a8_from_a(); self.pc = self.pc.wrapping_add(2); self.cycles = 2;} // LD (a8), A
                 
-                0x36 => { self.ld_memory_at_hl_from_d8(); self.pc += 2; self.cycles = 3;} // LD (HL), d8 
+                0x36 => { self.ld_memory_at_hl_from_d8(); self.pc = self.pc.wrapping_add(2); self.cycles = 3;} // LD (HL), d8 
                 
-                0x77 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.a); self.pc += 1; self.cycles = 1; } // LD (HL), A
-                0x70 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.b); self.pc += 1; self.cycles = 1; } // LD (HL), B
-                0x71 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.c); self.pc += 1; self.cycles = 1; } // LD (HL), C
-                0x72 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.d); self.pc += 1; self.cycles = 1; } // LD (HL), D
-                0x73 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.e); self.pc += 1; self.cycles = 1; } // LD (HL), E
-                0x74 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.h); self.pc += 1; self.cycles = 1; } // LD (HL), H
-                0x75 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.l); self.pc += 1; self.cycles = 1; } // LD (HL), L
+                0x77 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), A
+                0x70 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), B
+                0x71 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), C
+                0x72 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), D
+                0x73 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), E
+                0x74 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), H
+                0x75 => { self.bus.write(((self.h as u16) << 8 | self.l as u16), self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD (HL), L
                 
-                0x7E => { self.ld_reg_from_hl(Register8::A); self.pc += 1; self.cycles = 1; } // LD A, (HL)
-                0x46 => { self.ld_reg_from_hl(Register8::B); self.pc += 1; self.cycles = 1; } // LD B, (HL)
-                0x4E => { self.ld_reg_from_hl(Register8::C); self.pc += 1; self.cycles = 1; } // LD C, (HL)
-                0x56 => { self.ld_reg_from_hl(Register8::D); self.pc += 1; self.cycles = 1; } // LD D, (HL)
-                0x5E => { self.ld_reg_from_hl(Register8::E); self.pc += 1; self.cycles = 1; } // LD E, (HL)
-                0x66 => { self.ld_reg_from_hl(Register8::H); self.pc += 1; self.cycles = 1; } // LD H, (HL)
-                0x6E => { self.ld_reg_from_hl(Register8::L); self.pc += 1; self.cycles = 1; } // LD L, (HL)
+                0x7E => { self.ld_reg_from_hl(Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD A, (HL)
+                0x46 => { self.ld_reg_from_hl(Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD B, (HL)
+                0x4E => { self.ld_reg_from_hl(Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD C, (HL)
+                0x56 => { self.ld_reg_from_hl(Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD D, (HL)
+                0x5E => { self.ld_reg_from_hl(Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD E, (HL)
+                0x66 => { self.ld_reg_from_hl(Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD H, (HL)
+                0x6E => { self.ld_reg_from_hl(Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD L, (HL)
                 
                 // 16-bit load immediate instructions
-                0x01 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::BC, val); self.pc += 3; self.cycles = 2; } // LD BC, nn
-                0x11 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::DE, val); self.pc += 3; self.cycles = 2; } // LD DE, nn
-                0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc += 3; self.cycles = 2; } // LD HL, nn
-                0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc += 3; self.cycles = 2; } // LD SP, nn
-                0xF9 => { self.sp = ((self.h as u16) << 8) | (self.l as u16); self.pc += 1; self.cycles = 1; } // LD SP, HL
-                0xF8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; let result_sp = self.sp.wrapping_add(s8 as u16); self.assign_16bit_register(Register16::HL, result_sp); self.pc += 2; self.cycles = 2; } // LD HL, SP+s8
-                0xE8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.sp = self.sp.wrapping_add(s8 as u16); self.pc += 2; self.cycles = 3; } // ADD SP, s8
+                0x01 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::BC, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD BC, nn
+                0x11 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::DE, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD DE, nn
+                0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD HL, nn
+                0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD SP, nn
+                0xF9 => { self.sp = ((self.h as u16) << 8) | (self.l as u16); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD SP, HL
+                0xF8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; let result_sp = self.sp.wrapping_add(s8 as u16); self.assign_16bit_register(Register16::HL, result_sp); self.pc = self.pc.wrapping_add(2); self.cycles = 2; } // LD HL, SP+s8
+                0xE8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.sp = self.sp.wrapping_add(s8 as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 3; } // ADD SP, s8
 
                 // 8-bit load register instructions
-                0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, A
-                0x78 => { self.ld_reg_to_reg(Register8::B, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, B
-                0x79 => { self.ld_reg_to_reg(Register8::C, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, C
-                0x7A => { self.ld_reg_to_reg(Register8::D, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, D
-                0x7B => { self.ld_reg_to_reg(Register8::E, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, E
-                0x7C => { self.ld_reg_to_reg(Register8::H, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, H
-                0x7D => { self.ld_reg_to_reg(Register8::L, Register8::A); self.pc += 1; self.cycles = 0; } // LD A, L
+                0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, A
+                0x78 => { self.ld_reg_to_reg(Register8::B, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, B
+                0x79 => { self.ld_reg_to_reg(Register8::C, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, C
+                0x7A => { self.ld_reg_to_reg(Register8::D, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, D
+                0x7B => { self.ld_reg_to_reg(Register8::E, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, E
+                0x7C => { self.ld_reg_to_reg(Register8::H, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, H
+                0x7D => { self.ld_reg_to_reg(Register8::L, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, L
                 
-                0x40 => { self.ld_reg_to_reg(Register8::B, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, B
-                0x47 => { self.ld_reg_to_reg(Register8::A, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, A
-                0x41 => { self.ld_reg_to_reg(Register8::C, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, C
-                0x42 => { self.ld_reg_to_reg(Register8::D, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, D
-                0x43 => { self.ld_reg_to_reg(Register8::E, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, E
-                0x44 => { self.ld_reg_to_reg(Register8::H, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, H
-                0x45 => { self.ld_reg_to_reg(Register8::L, Register8::B); self.pc += 1; self.cycles = 0; } // LD B, L
+                0x40 => { self.ld_reg_to_reg(Register8::B, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, B
+                0x47 => { self.ld_reg_to_reg(Register8::A, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, A
+                0x41 => { self.ld_reg_to_reg(Register8::C, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, C
+                0x42 => { self.ld_reg_to_reg(Register8::D, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, D
+                0x43 => { self.ld_reg_to_reg(Register8::E, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, E
+                0x44 => { self.ld_reg_to_reg(Register8::H, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, H
+                0x45 => { self.ld_reg_to_reg(Register8::L, Register8::B); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD B, L
                 
-                0x4F => { self.ld_reg_to_reg(Register8::A, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, A
-                0x48 => { self.ld_reg_to_reg(Register8::B, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, B
-                0x49 => { self.ld_reg_to_reg(Register8::C, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, C
-                0x4A => { self.ld_reg_to_reg(Register8::D, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, D
-                0x4B => { self.ld_reg_to_reg(Register8::E, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, E
-                0x4C => { self.ld_reg_to_reg(Register8::H, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, H
-                0x4D => { self.ld_reg_to_reg(Register8::L, Register8::C); self.pc += 1; self.cycles = 0; } // LD C, L
+                0x4F => { self.ld_reg_to_reg(Register8::A, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, A
+                0x48 => { self.ld_reg_to_reg(Register8::B, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, B
+                0x49 => { self.ld_reg_to_reg(Register8::C, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, C
+                0x4A => { self.ld_reg_to_reg(Register8::D, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, D
+                0x4B => { self.ld_reg_to_reg(Register8::E, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, E
+                0x4C => { self.ld_reg_to_reg(Register8::H, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, H
+                0x4D => { self.ld_reg_to_reg(Register8::L, Register8::C); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD C, L
                 
-                0x57 => { self.ld_reg_to_reg(Register8::A, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, A
-                0x50 => { self.ld_reg_to_reg(Register8::B, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, B
-                0x51 => { self.ld_reg_to_reg(Register8::C, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, C
-                0x52 => { self.ld_reg_to_reg(Register8::D, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, D
-                0x53 => { self.ld_reg_to_reg(Register8::E, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, E
-                0x54 => { self.ld_reg_to_reg(Register8::H, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, H
-                0x55 => { self.ld_reg_to_reg(Register8::L, Register8::D); self.pc += 1; self.cycles = 0; } // LD D, L
+                0x57 => { self.ld_reg_to_reg(Register8::A, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, A
+                0x50 => { self.ld_reg_to_reg(Register8::B, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, B
+                0x51 => { self.ld_reg_to_reg(Register8::C, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, C
+                0x52 => { self.ld_reg_to_reg(Register8::D, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, D
+                0x53 => { self.ld_reg_to_reg(Register8::E, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, E
+                0x54 => { self.ld_reg_to_reg(Register8::H, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, H
+                0x55 => { self.ld_reg_to_reg(Register8::L, Register8::D); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD D, L
                 
-                0x5F => { self.ld_reg_to_reg(Register8::A, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, A
-                0x58 => { self.ld_reg_to_reg(Register8::B, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, B
-                0x59 => { self.ld_reg_to_reg(Register8::C, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, C
-                0x5A => { self.ld_reg_to_reg(Register8::D, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, D
-                0x5B => { self.ld_reg_to_reg(Register8::E, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, E
-                0x5C => { self.ld_reg_to_reg(Register8::H, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, H
-                0x5D => { self.ld_reg_to_reg(Register8::L, Register8::E); self.pc += 1; self.cycles = 0; } // LD E, L
+                0x5F => { self.ld_reg_to_reg(Register8::A, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, A
+                0x58 => { self.ld_reg_to_reg(Register8::B, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, B
+                0x59 => { self.ld_reg_to_reg(Register8::C, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, C
+                0x5A => { self.ld_reg_to_reg(Register8::D, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, D
+                0x5B => { self.ld_reg_to_reg(Register8::E, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, E
+                0x5C => { self.ld_reg_to_reg(Register8::H, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, H
+                0x5D => { self.ld_reg_to_reg(Register8::L, Register8::E); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD E, L
                 
-                0x67 => { self.ld_reg_to_reg(Register8::A, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, A
-                0x60 => { self.ld_reg_to_reg(Register8::B, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, B
-                0x61 => { self.ld_reg_to_reg(Register8::C, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, C
-                0x62 => { self.ld_reg_to_reg(Register8::D, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, D
-                0x63 => { self.ld_reg_to_reg(Register8::E, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, E
-                0x64 => { self.ld_reg_to_reg(Register8::H, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, H
-                0x65 => { self.ld_reg_to_reg(Register8::L, Register8::H); self.pc += 1; self.cycles = 0; } // LD H, L
+                0x67 => { self.ld_reg_to_reg(Register8::A, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, A
+                0x60 => { self.ld_reg_to_reg(Register8::B, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, B
+                0x61 => { self.ld_reg_to_reg(Register8::C, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, C
+                0x62 => { self.ld_reg_to_reg(Register8::D, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, D
+                0x63 => { self.ld_reg_to_reg(Register8::E, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, E
+                0x64 => { self.ld_reg_to_reg(Register8::H, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, H
+                0x65 => { self.ld_reg_to_reg(Register8::L, Register8::H); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD H, L
                 
-                0x6F => { self.ld_reg_to_reg(Register8::A, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, A
-                0x68 => { self.ld_reg_to_reg(Register8::B, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, B
-                0x69 => { self.ld_reg_to_reg(Register8::C, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, C
-                0x6A => { self.ld_reg_to_reg(Register8::D, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, D
-                0x6B => { self.ld_reg_to_reg(Register8::E, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, E
-                0x6C => { self.ld_reg_to_reg(Register8::H, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, H
-                0x6D => { self.ld_reg_to_reg(Register8::L, Register8::L); self.pc += 1; self.cycles = 0; } // LD L, L
+                0x6F => { self.ld_reg_to_reg(Register8::A, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, A
+                0x68 => { self.ld_reg_to_reg(Register8::B, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, B
+                0x69 => { self.ld_reg_to_reg(Register8::C, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, C
+                0x6A => { self.ld_reg_to_reg(Register8::D, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, D
+                0x6B => { self.ld_reg_to_reg(Register8::E, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, E
+                0x6C => { self.ld_reg_to_reg(Register8::H, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, H
+                0x6D => { self.ld_reg_to_reg(Register8::L, Register8::L); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD L, L
                 
                 // 8-bit arithmetic instructions
-                0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0;} // ADD A, A
-                0x80 => { self.a = self.add_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // ADD A, B
-                0x81 => { self.a = self.add_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // ADD A, C
-                0x82 => { self.a = self.add_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // ADD A, D
-                0x83 => { self.a = self.add_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // ADD A, E
-                0x84 => { self.a = self.add_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADD A, H
-                0x85 => { self.a = self.add_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADD A, L
-                0x86 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.add_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // ADD A, (HL)
+                0x87 => { self.a = self.add_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0;} // ADD A, A
+                0x80 => { self.a = self.add_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADD A, B
+                0x81 => { self.a = self.add_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADD A, C
+                0x82 => { self.a = self.add_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADD A, D
+                0x83 => { self.a = self.add_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADD A, E
+                0x84 => { self.a = self.add_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADD A, H
+                0x85 => { self.a = self.add_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADD A, L
+                0x86 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.add_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // ADD A, (HL)
 
-                0x8F => { self.a = self.adc_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // ADC A, B
-                0x88 => { self.a = self.adc_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // ADC A, B
-                0x89 => { self.a = self.adc_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // ADC A, C
-                0x8A => { self.a = self.adc_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // ADC A, D
-                0x8B => { self.a = self.adc_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // ADC A, E
-                0x8C => { self.a = self.adc_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // ADC A, H
-                0x8D => { self.a = self.adc_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // ADC A, L
-                0x8E => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.adc_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // ADC A, (HL)
+                0x8F => { self.a = self.adc_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, B
+                0x88 => { self.a = self.adc_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, B
+                0x89 => { self.a = self.adc_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, C
+                0x8A => { self.a = self.adc_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, D
+                0x8B => { self.a = self.adc_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, E
+                0x8C => { self.a = self.adc_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, H
+                0x8D => { self.a = self.adc_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // ADC A, L
+                0x8E => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.adc_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // ADC A, (HL)
 
-                0x97 => { self.a = self.sub_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // SUB A, A
-                0x90 => { self.a = self.sub_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // SUB A, B
-                0x91 => { self.a = self.sub_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // SUB A, C
-                0x92 => { self.a = self.sub_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // SUB A, D
-                0x93 => { self.a = self.sub_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // SUB A, E
-                0x94 => { self.a = self.sub_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // SUB A, H
-                0x95 => { self.a = self.sub_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // SUB A, L
-                0x96 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // SUB A, (HL)
+                0x97 => { self.a = self.sub_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, A
+                0x90 => { self.a = self.sub_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, B
+                0x91 => { self.a = self.sub_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, C
+                0x92 => { self.a = self.sub_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, D
+                0x93 => { self.a = self.sub_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, E
+                0x94 => { self.a = self.sub_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, H
+                0x95 => { self.a = self.sub_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SUB A, L
+                0x96 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // SUB A, (HL)
 
-                0x9F => { self.a = self.sbc_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // SBC A, A
-                0x98 => { self.a = self.sbc_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // SBC A, B
-                0x99 => { self.a = self.sbc_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // SBC A, C
-                0x9A => { self.a = self.sbc_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // SBC A, D
-                0x9B => { self.a = self.sbc_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // SBC A, E
-                0x9C => { self.a = self.sbc_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // SBC A, H
-                0x9D => { self.a = self.sbc_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // SBC A, L
-                0x9E => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.sbc_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // SBC A, (HL)
+                0x9F => { self.a = self.sbc_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, A
+                0x98 => { self.a = self.sbc_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, B
+                0x99 => { self.a = self.sbc_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, C
+                0x9A => { self.a = self.sbc_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, D
+                0x9B => { self.a = self.sbc_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, E
+                0x9C => { self.a = self.sbc_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, H
+                0x9D => { self.a = self.sbc_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // SBC A, L
+                0x9E => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.sbc_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // SBC A, (HL)
 
-                0xA7 => { self.a = self.and_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // AND A, A
-                0xA0 => { self.a = self.and_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // AND A, B
-                0xA1 => { self.a = self.and_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // AND A, C
-                0xA2 => { self.a = self.and_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // AND A, D
-                0xA3 => { self.a = self.and_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // AND A, E
-                0xA4 => { self.a = self.and_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // AND A, H
-                0xA5 => { self.a = self.and_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // AND A, L
-                0xA6 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.and_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // AND A, (HL)
+                0xA7 => { self.a = self.and_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, A
+                0xA0 => { self.a = self.and_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, B
+                0xA1 => { self.a = self.and_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, C
+                0xA2 => { self.a = self.and_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, D
+                0xA3 => { self.a = self.and_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, E
+                0xA4 => { self.a = self.and_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, H
+                0xA5 => { self.a = self.and_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // AND A, L
+                0xA6 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.and_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // AND A, (HL)
 
-                0xAF => { self.a = self.xor_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // XOR A, A
-                0xA8 => { self.a = self.xor_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // XOR A, B
-                0xA9 => { self.a = self.xor_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // XOR A, C
-                0xAA => { self.a = self.xor_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // XOR A, D
-                0xAB => { self.a = self.xor_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // XOR A, E
-                0xAC => { self.a = self.xor_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // XOR A, H
-                0xAD => { self.a = self.xor_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // XOR A, L
-                0xAE => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.xor_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // XOR A, (HL)
+                0xAF => { self.a = self.xor_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, A
+                0xA8 => { self.a = self.xor_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, B
+                0xA9 => { self.a = self.xor_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, C
+                0xAA => { self.a = self.xor_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, D
+                0xAB => { self.a = self.xor_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, E
+                0xAC => { self.a = self.xor_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, H
+                0xAD => { self.a = self.xor_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // XOR A, L
+                0xAE => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.xor_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // XOR A, (HL)
 
-                0xB7 => { self.a = self.or_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // OR A, A
-                0xB0 => { self.a = self.or_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // OR A, B
-                0xB1 => { self.a = self.or_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // OR A, C
-                0xB2 => { self.a = self.or_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // OR A, D
-                0xB3 => { self.a = self.or_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // OR A, E
-                0xB4 => { self.a = self.or_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // OR A, H
-                0xB5 => { self.a = self.or_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // OR A, L
-                0xB6 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.or_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // OR A, (HL)
+                0xB7 => { self.a = self.or_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, A
+                0xB0 => { self.a = self.or_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, B
+                0xB1 => { self.a = self.or_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, C
+                0xB2 => { self.a = self.or_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, D
+                0xB3 => { self.a = self.or_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, E
+                0xB4 => { self.a = self.or_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, H
+                0xB5 => { self.a = self.or_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // OR A, L
+                0xB6 => {let addr = ((self.h as u16) << 8 | self.l as u16); self.a = self.or_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // OR A, (HL)
 
-                0xBF => { _ = self.sub_8_bit(self.a, self.a); self.pc += 1; self.cycles = 0; } // CP A, A
-                0xB8 => { _ = self.sub_8_bit(self.a, self.b); self.pc += 1; self.cycles = 0; } // CP A, B
-                0xB9 => { _ = self.sub_8_bit(self.a, self.c); self.pc += 1; self.cycles = 0; } // CP A, C
-                0xBA => { _ = self.sub_8_bit(self.a, self.d); self.pc += 1; self.cycles = 0; } // CP A, D
-                0xBB => { _ = self.sub_8_bit(self.a, self.e); self.pc += 1; self.cycles = 0; } // CP A, E
-                0xBC => { _ = self.sub_8_bit(self.a, self.h); self.pc += 1; self.cycles = 0; } // CP A, H
-                0xBD => { _ = self.sub_8_bit(self.a, self.l); self.pc += 1; self.cycles = 0; } // CP A, L
-                0xBE => {let addr = ((self.h as u16) << 8 | self.l as u16); _ = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc += 1; self.cycles = 1; } // CP A, (HL)
+                0xBF => { _ = self.sub_8_bit(self.a, self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, A
+                0xB8 => { _ = self.sub_8_bit(self.a, self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, B
+                0xB9 => { _ = self.sub_8_bit(self.a, self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, C
+                0xBA => { _ = self.sub_8_bit(self.a, self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, D
+                0xBB => { _ = self.sub_8_bit(self.a, self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, E
+                0xBC => { _ = self.sub_8_bit(self.a, self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, H
+                0xBD => { _ = self.sub_8_bit(self.a, self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CP A, L
+                0xBE => {let addr = ((self.h as u16) << 8 | self.l as u16); _ = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // CP A, (HL)
 
                 // immediate arithmetic instructions
-                0xC6 => { self.a = self.add_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // ADD d8
-                0xCE => { self.a = self.adc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // ADC d8
-                0xD6 => { self.a = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // SUB d8
-                0xDE => { self.a = self.sbc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // SBC d8
-                0xE6 => { self.a = self.and_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // AND d8
-                0xEE => { self.a = self.xor_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // XOR d8
-                0xF6 => { self.a = self.or_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // OR d8
-                0xFE => { _ = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc += 2; self.cycles = 1;} // CP d8
+                0xC6 => { self.a = self.add_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // ADD d8
+                0xCE => { self.a = self.adc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // ADC d8
+                0xD6 => { self.a = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // SUB d8
+                0xDE => { self.a = self.sbc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // SBC d8
+                0xE6 => { self.a = self.and_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // AND d8
+                0xEE => { self.a = self.xor_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // XOR d8
+                0xF6 => { self.a = self.or_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // OR d8
+                0xFE => { _ = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // CP d8
                 
                 // Jump instructions
                 0x18 => { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } // JR s8
-                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NZ s8
-                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR NC s8
-                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR Z s8
-                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc += 2; } self.cycles = 2; } // JR C s8
+                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR NZ s8
+                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR NC s8
+                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR Z s8
+                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR C s8
+                0xE9 => { self.pc = ((self.h as u16) << 8) | (self.l as u16); self.cycles = 0; } // JP HL
 
                 0xC3 => { self.jump_nn(); self.cycles = 2; } // JP a16
-                0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NZ a16
-                0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP NC a16
-                0xCA => { if self.f & 0x80 == 0x80 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP Z a16
-                0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc += 3; self.cycles = 2 } } // JP C a16
+                0xC2 => { if self.f & 0x80 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc = self.pc.wrapping_add(3); self.cycles = 2 } } // JP NZ a16
+                0xD2 => { if self.f & 0x10 == 0 { self.jump_nn(); self.cycles = 3;} else { self.pc = self.pc.wrapping_add(3); self.cycles = 2 } } // JP NC a16
+                0xCA => { if self.f & 0x80 == 0x80 { self.jump_nn(); self.cycles = 3;} else { self.pc = self.pc.wrapping_add(3); self.cycles = 2 } } // JP Z a16
+                0xDA => { if self.f & 0x10 == 0x10 { self.jump_nn(); self.cycles = 3;} else { self.pc = self.pc.wrapping_add(3); self.cycles = 2 } } // JP C a16
 
                 // Call/Ret instructions
                 0xCD => { self.call(); self.cycles = 5; } // CALL a16
-                0xC4 => { if self.f & 0x80 == 0 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL NZ a16
-                0xD4 => { if self.f & 0x10 == 0 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL NC a16
-                0xCC => { if self.f & 0x80 == 0x80 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL Z a16
-                0xDC => { if self.f & 0x10 == 0x10 { self.call(); self.cycles = 5; } else { self.pc += 3; self.cycles = 2; } } // CALL C a16
+                0xC4 => { if self.f & 0x80 == 0 { self.call(); self.cycles = 5; } else { self.pc = self.pc.wrapping_add(3); self.cycles = 2; } } // CALL NZ a16
+                0xD4 => { if self.f & 0x10 == 0 { self.call(); self.cycles = 5; } else { self.pc = self.pc.wrapping_add(3); self.cycles = 2; } } // CALL NC a16
+                0xCC => { if self.f & 0x80 == 0x80 { self.call(); self.cycles = 5; } else { self.pc = self.pc.wrapping_add(3); self.cycles = 2; } } // CALL Z a16
+                0xDC => { if self.f & 0x10 == 0x10 { self.call(); self.cycles = 5; } else { self.pc = self.pc.wrapping_add(3); self.cycles = 2; } } // CALL C a16
 
                 0xC9 => { self.pc = self.pop_16bit_value(); self.cycles = 3; } // RET
                 0xD9 => { self.pc = self.pop_16bit_value(); self.ime = true; self.cycles = 3; } // RETI
-                0xC0 => { if self.f & 0x80 == 0 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET NZ
-                0xD0 => { if self.f & 0x10 == 0 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET NC
-                0xC8=> { if self.f & 0x80 == 0x80 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET Z
-                0xD8 => { if self.f & 0x10 == 0x10 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc += 1; self.cycles = 1; } } // RET C
+                0xC0 => { if self.f & 0x80 == 0 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc = self.pc.wrapping_add(1); self.cycles = 1; } } // RET NZ
+                0xD0 => { if self.f & 0x10 == 0 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc = self.pc.wrapping_add(1); self.cycles = 1; } } // RET NC
+                0xC8=> { if self.f & 0x80 == 0x80 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc = self.pc.wrapping_add(1); self.cycles = 1; } } // RET Z
+                0xD8 => { if self.f & 0x10 == 0x10 { self.pc = self.pop_16bit_value(); self.cycles = 4; } else { self.pc = self.pc.wrapping_add(1); self.cycles = 1; } } // RET C
                                 
                 // increment/decrement instructions
-                0x3C => { self.a = self.increment_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // INC A
-                0x04 => { self.b = self.increment_8bit_register(self.b); self.pc += 1; self.cycles = 0; } // INC B
-                0x0C => { self.c = self.increment_8bit_register(self.c); self.pc += 1; self.cycles = 0; } // INC C
-                0x14 => { self.d = self.increment_8bit_register(self.d); self.pc += 1; self.cycles = 0; } // INC D
-                0x1C => { self.e = self.increment_8bit_register(self.e); self.pc += 1; self.cycles = 0; } // INC E
-                0x24 => { self.h = self.increment_8bit_register(self.h); self.pc += 1; self.cycles = 0; } // INC H
-                0x2C => { self.l = self.increment_8bit_register(self.l); self.pc += 1; self.cycles = 0; } // INC L
+                0x3C => { self.a = self.increment_8bit_register(self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC A
+                0x04 => { self.b = self.increment_8bit_register(self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC B
+                0x0C => { self.c = self.increment_8bit_register(self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC C
+                0x14 => { self.d = self.increment_8bit_register(self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC D
+                0x1C => { self.e = self.increment_8bit_register(self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC E
+                0x24 => { self.h = self.increment_8bit_register(self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC H
+                0x2C => { self.l = self.increment_8bit_register(self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // INC L
                 
-                0x3D => { self.a = self.decrement_8bit_register(self.a); self.pc += 1; self.cycles = 0; } // DEC A
-                0x05 => { self.b = self.decrement_8bit_register(self.b); self.pc += 1; self.cycles = 0; } // DEC B
-                0x0D => { self.c = self.decrement_8bit_register(self.c); self.pc += 1; self.cycles = 0; } // DEC C
-                0x15 => { self.d = self.decrement_8bit_register(self.d); self.pc += 1; self.cycles = 0; } // DEC D
-                0x1D => { self.e = self.decrement_8bit_register(self.e); self.pc += 1; self.cycles = 0; } // DEC E
-                0x25 => { self.h = self.decrement_8bit_register(self.h); self.pc += 1; self.cycles = 0; } // DEC H
-                0x2D => { self.l = self.decrement_8bit_register(self.l); self.pc += 1; self.cycles = 0; } // DEC L
+                0x3D => { self.a = self.decrement_8bit_register(self.a); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC A
+                0x05 => { self.b = self.decrement_8bit_register(self.b); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC B
+                0x0D => { self.c = self.decrement_8bit_register(self.c); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC C
+                0x15 => { self.d = self.decrement_8bit_register(self.d); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC D
+                0x1D => { self.e = self.decrement_8bit_register(self.e); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC E
+                0x25 => { self.h = self.decrement_8bit_register(self.h); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC H
+                0x2D => { self.l = self.decrement_8bit_register(self.l); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DEC L
                 
-                0x03 => { self.increment_16_bit_register(self.b, self.c, Register16::BC); self.pc += 1; self.cycles = 1; } // INC BC
-                0x13 => { self.increment_16_bit_register(self.d, self.e, Register16::DE); self.pc += 1; self.cycles = 1; } // INC DE
-                0x23 => { self.increment_16_bit_register(self.h, self.l, Register16::HL); self.pc += 1; self.cycles = 1; } // INC HL
-                0x33 => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.increment_16_bit_register(high, low, Register16::SP); self.pc += 1; self.cycles = 1; } // INC SP
+                0x03 => { self.increment_16_bit_register(self.b, self.c, Register16::BC); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // INC BC
+                0x13 => { self.increment_16_bit_register(self.d, self.e, Register16::DE); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // INC DE
+                0x23 => { self.increment_16_bit_register(self.h, self.l, Register16::HL); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // INC HL
+                0x33 => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.increment_16_bit_register(high, low, Register16::SP); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // INC SP
                 
-                0x0B => { self.decrement_16_bit_register(self.b, self.c, Register16::BC); self.pc += 1; self.cycles = 1; } // DEC BC
-                0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc += 1; self.cycles = 1; } // DEC DE
-                0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc += 1; self.cycles = 1; } // DEC HL
-                0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc += 1; self.cycles = 1; }
+                0x0B => { self.decrement_16_bit_register(self.b, self.c, Register16::BC); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC BC
+                0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC DE
+                0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC HL
+                0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc = self.pc.wrapping_add(1); self.cycles = 1; }
                 
-                0x34 => { self.inc_memory_at_hl(); self.pc += 1; self.cycles = 2; } // INC (HL)
-                0x35 => { self.dec_memory_at_hl(); self.pc += 1; self.cycles = 2; } // DEC (HL)
+                0x34 => { self.inc_memory_at_hl(); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // INC (HL)
+                0x35 => { self.dec_memory_at_hl(); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // DEC (HL)
 
                 // 16-bit adds
-                0x09 => { self.add_16bit_to_hl(Register16::BC); self.pc += 1; self.cycles = 1; } // ADD HL, BC
-                0x19 => { self.add_16bit_to_hl(Register16::DE); self.pc += 1; self.cycles = 1; } // ADD HL, DE
-                0x29 => { self.add_16bit_to_hl(Register16::HL); self.pc += 1; self.cycles = 1; } // ADD HL, HL
-                0x39 => { self.add_16bit_to_hl(Register16::SP); self.pc += 1; self.cycles = 1; } // ADD HL, SP
-                0x07 => { self.rlca(); self.pc += 1; self.cycles = 0; } // RLCA
-                0x17 => { self.rla(); self.pc += 1; self.cycles = 0; } // RLA
-                0x0F => { self.rrca(); self.pc += 1; self.cycles = 0; } // RRCA
-                0x1F => { self.rra(); self.pc += 1; self.cycles = 0; } // RRA
+                0x09 => { self.add_16bit_to_hl(Register16::BC); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // ADD HL, BC
+                0x19 => { self.add_16bit_to_hl(Register16::DE); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // ADD HL, DE
+                0x29 => { self.add_16bit_to_hl(Register16::HL); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // ADD HL, HL
+                0x39 => { self.add_16bit_to_hl(Register16::SP); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // ADD HL, SP
+                0x07 => { self.rlca(); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // RLCA
+                0x17 => { self.rla(); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // RLA
+                0x0F => { self.rrca(); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // RRCA
+                0x1F => { self.rra(); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // RRA
                 
                 // Carry flag instructions
-                0x2F => { self.a = !self.a; self.f |= 0x60; self.pc += 1; self.cycles = 0; } // CPL
-                0x27 => { self.da_adjust(); self.pc += 1; self.cycles = 0; } // DAA
-                0x37 => { self.f = (self.f & 0x8F) | 0x10; self.pc += 1; self.cycles = 1; } // SCF (set the carry flag)
-                0x3F => { self.f = (self.f ^ 0x10) & 0x9F; self.pc += 1; self.cycles = 1; } // CCF (flip the carry flag)
+                0x2F => { self.a = !self.a; self.f |= 0x60; self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // CPL
+                0x27 => { self.da_adjust(); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DAA
+                0x37 => { self.f = (self.f & 0x8F) | 0x10; self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // SCF (set the carry flag)
+                0x3F => { self.f = (self.f ^ 0x10) & 0x9F; self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // CCF (flip the carry flag)
 
                 // Stack instructions
-                0xC1 => { self.pop(Register16::BC); self.pc += 1; self.cycles = 2; } // POP BC
-                0xD1 => { self.pop(Register16::DE); self.pc += 1; self.cycles = 2; } // POP DE
-                0xE1 => { self.pop(Register16::HL); self.pc += 1; self.cycles = 2; } // POP HL
-                0xF1 => { self.pop(Register16::AF); self.pc += 1; self.cycles = 2; } // POP AF
+                0xC1 => { self.pop(Register16::BC); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // POP BC
+                0xD1 => { self.pop(Register16::DE); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // POP DE
+                0xE1 => { self.pop(Register16::HL); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // POP HL
+                0xF1 => { self.pop(Register16::AF); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // POP AF
 
-                0xC5 => { self.push(Register16::BC); self.pc += 1; self.cycles = 2; } // PUSH BC
-                0xD5 => { self.push(Register16::DE); self.pc += 1; self.cycles = 2; } // PUSH DE
-                0xE5 => { self.push(Register16::HL); self.pc += 1; self.cycles = 2; } // PUSH HL
-                0xF5 => { self.push(Register16::AF); self.pc += 1; self.cycles = 2; } // PUSH AF
+                0xC5 => { self.push(Register16::BC); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // PUSH BC
+                0xD5 => { self.push(Register16::DE); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // PUSH DE
+                0xE5 => { self.push(Register16::HL); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // PUSH HL
+                0xF5 => { self.push(Register16::AF); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // PUSH AF
 
                 // Interrupt master enable setters
-                0xF3 => { self.ime = false; self.pc += 1; self.cycles = 0; } // DI
-                0xFB => { self.ime = true; self.pc += 1; self.cycles = 0; } // EI
+                0xF3 => { self.ime = false; self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // DI
+                0xFB => { self.ime = true; self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // EI
 
                 // Reset instructions
                 0xC7 => { let return_address = self.pc.wrapping_add(1); self.push_16bit_value(return_address); self.pc = 0x0000; self.cycles = 3; } // RST 0
@@ -549,7 +553,7 @@ impl CPU {
                     }
                 },
 
-                _ => { self.pc += 1; self.cycles = 1; } // Unimplemented, do a NOP
+                _ => { panic!("Unknown opcode: {}", opcode) } // Unimplemented, panic
             }
         } else {
             // If we aren't fetching a new instruction, just tick the clock down

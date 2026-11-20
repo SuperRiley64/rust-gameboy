@@ -1,4 +1,7 @@
 #[cfg(test)]
+
+// Tests all passed before I introduced the memory mapper in bus.rs
+
 mod tests {
     use crate::gameboy::cpu::CPU;
 

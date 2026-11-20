@@ -1,6 +1,8 @@
 mod gameboy;
 mod tests;
 use gameboy::cpu::CPU;
+use std::thread;
+use std::time::Duration;
 
 fn main () {
     println!("Initializing CPU");
@@ -20,4 +22,25 @@ fn main () {
     cpu.l = 0x4D;
     cpu.sp = 0xFFFE;
     cpu.pc = 0x0100;
+
+    //
+    // Load the test rom
+    //
+    println!("Loading test ROM");
+    cpu.bus.cartridge.load_rom("test-roms/01-special.gb")
+    .expect("Failed to load the ROM file. Check the path!");
+    println!("Test ROM loaded");
+
+    //
+    // Run the CPU
+    //
+
+    let mut cycle_num: i64 = 0;
+
+    println!("Running CPU forever\n\n");
+
+    while(true) {
+        cpu.cycle();
+        //thread::sleep(Duration::from_millis(100));
+    }
 }
