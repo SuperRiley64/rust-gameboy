@@ -1,4 +1,5 @@
-#[derive(Debug, Clone, Copy)]
+use crate::gameboy::bus::Bus;
+
 pub enum Register8 {
     A,
     B,
@@ -9,7 +10,6 @@ pub enum Register8 {
     L,
 }
 
-#[derive(Debug, Clone, Copy)]
 pub enum Register16{
     BC,
     DE,
@@ -31,7 +31,6 @@ pub struct CPU {
     pub halt: bool,
     pub sp: u16,
     pub pc: u16,
-    pub memory: [u8; 0x10000],
     pub cycles: u8
 }
 
@@ -50,7 +49,6 @@ impl CPU {
             halt: false,
             sp: 0xFFFE, // fffe because ffff is the interrupt enable register
             pc: 0,
-            memory: [0; 0x10000],
             cycles: 0,
         }
     }
