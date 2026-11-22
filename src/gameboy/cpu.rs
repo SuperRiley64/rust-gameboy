@@ -387,7 +387,7 @@ impl CPU {
                 0x0B => { self.decrement_16_bit_register(self.b, self.c, Register16::BC); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC BC
                 0x1B => { self.decrement_16_bit_register(self.d, self.e, Register16::DE); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC DE
                 0x2B => { self.decrement_16_bit_register(self.h, self.l, Register16::HL); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC HL
-                0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc = self.pc.wrapping_add(1); self.cycles = 1; }
+                0x3B => { let high = (self.sp >> 8) as u8; let low = (self.sp & 0xFF) as u8; self.decrement_16_bit_register(high, low, Register16::SP); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // DEC SP
                 
                 0x34 => { self.inc_memory_at_hl(); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // INC (HL)
                 0x35 => { self.dec_memory_at_hl(); self.pc = self.pc.wrapping_add(1); self.cycles = 2; } // DEC (HL)
@@ -851,7 +851,7 @@ impl CPU {
             Register16::BC => (self.b, self.c),
             Register16::DE => (self.d, self.e),
             Register16::HL => (self.h, self.l),
-            Register16::SP => ((self.sp & 0xFF) as u8, (self.sp >> 8) as u8),
+            Register16::SP => ((self.sp >> 8) as u8, (self.sp & 0xFF) as u8),
             Register16::AF => (self.a, self.f),
         };
 
@@ -861,7 +861,7 @@ impl CPU {
         let (result, overflow) = current_hl.overflowing_add(source_val);
 
         // Calculate half-carry: carry from bit 3 to 4 of the low byte
-        let half_carry = ((current_hl & 0x0F) + (source_val & 0x0F)) > 0x0F;
+        let half_carry = ((current_hl & 0x0FFF) + (source_val & 0x0FFF)) > 0x0FFF;
 
         // Update registers
         self.assign_16bit_register(Register16::HL, result);
@@ -1379,6 +1379,7 @@ impl CPU {
         
         // Calculate half-carry: carry from bit 3 to 4 of the low byte
         let half_carry = ((current_sp & 0x0F) + (val_to_add & 0x0F)) > 0x0F;
+        let carry = ((current_sp & 0xFF) + (val_to_add & 0xFF)) > 0xFF;
         
         // Update the stack pointer
         self.sp = result;
@@ -1394,7 +1395,7 @@ impl CPU {
         }
         
         // Set carry flag (bit 4)
-        if overflow {
+        if carry {
             self.f |= 0x10;
         }
     }
@@ -1408,6 +1409,7 @@ impl CPU {
         
         // Calculate half-carry: carry from bit 3 to 4 of the low byte
         let half_carry = ((current_sp & 0x0F) + (val_to_add & 0x0F)) > 0x0F;
+        let carry = ((current_sp & 0xFF) + (val_to_add & 0xFF)) > 0xFF;
         
         // Update HL register
         self.assign_16bit_register(Register16::HL, result);
@@ -1421,7 +1423,7 @@ impl CPU {
         }
         
         // Set carry flag (bit 4)
-        if overflow {
+        if carry {
             self.f |= 0x10;
         }
     }
