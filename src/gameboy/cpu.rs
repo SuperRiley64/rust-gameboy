@@ -446,10 +446,11 @@ impl CPU {
 
                     // This assumes `self.cycles` stores the remaining T-cycles minus one,
                     // as is common in instruction-dispatch loops. Check against your CPU loop.
+                    // CB instructions: documented T-cycles minus one.
                     self.cycles = match (family, target) {
-                        (_, 6) if family == 1 => 11, // BIT (HL): 12 T-cycles total
-                        (_, 6) => 15,                // Other (HL): 16 T-cycles total
-                        _ => 7,                      // Register target: 8 T-cycles total
+                        (1, 6) => 11, // BIT b,(HL): 12 cycles
+                        (_, 6) => 15, // Other (HL) operations: 16 cycles
+                        _ => 7,       // Register operations: 8 cycles
                     };
 
                     const FLAG_Z: u8 = 0x80;
@@ -630,8 +631,8 @@ impl CPU {
             },
             Register16::SP => self.sp = value, // sp is 16 bit so can be assigned directly
             Register16::AF => {
-                self.h = (value >> 8) as u8;   // High byte goes to `h`
-                self.l = (value & 0xFF) as u8; // Low byte goes to `l`
+                self.a = (value >> 8) as u8;   // High byte goes to `a`
+                self.f = (value & 0xF0) as u8; // Low byte goes to `f`
             },
         }
     }
@@ -782,26 +783,7 @@ impl CPU {
     // Helper method for 8-bit XOR instructions
     fn xor_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
         let result = reg1 ^ reg2;
-
-        // Preserve bits 0-3 of the flags register
-        self.f &= 0xF0;
-
-        // Set Zero Flag (bit 7): 1 if result is 0
-        if result == 0 {
-            self.f |= 0x80;
-        } else {
-            self.f &= !0x80;
-        }
-
-        // Clear Half-Carry flag (bit 5):
-        self.f &= !0x20;
-
-        // Clear Carry Flag (bit 4)
-        self.f &= !0x10;
-
-        // Clear Subtract flag (bit 6)
-        self.f &= !0x40;
-
+        self.f = if result == 0 { 0x80 } else { 0x00 };
         result
     }
 
@@ -922,7 +904,7 @@ impl CPU {
         self.pc = target_address as u16;
         
         // Note: We do NOT do self.pc += 3 here. 
-        // The jump instruction's job is to move the PC to the new location.
+        // The jump instruction's job is to move the PC to the new location.https://pcpartpicker.com/product/MM7scf/jonsbo-jonsplus-z20-microatx-desktop-case-z20-black
         // If you added 3, you would skip the first 3 bytes of the target instruction.
     }
 
@@ -932,70 +914,100 @@ impl CPU {
     }
 
     fn rla(&mut self) {
+        // 1. Capture the bit 7 of register A BEFORE the shift.
+        // This value will become the new Carry flag.
+        let carry_bit = (self.a & 0x80) != 0;
+        
+        // 2. Capture the current Carry flag.
+        // This value will be moved into bit 0 of register A.
         let old_carry = (self.f & 0x10) != 0;
+
+        // 3. Perform the left rotation.
+        // Bit 0 of A is replaced by the old Carry flag.
         self.a = (self.a << 1) | (if old_carry { 1 } else { 0 });
         
-        // Update flags
+        // 4. Update flags.
+        // Reset all flags to 0.
         self.f = 0;
-        if self.a == 0 {
-            self.f |= 0x80; // Zero flag
-        }
-        if (self.a & 0x0F) == 0x0F {
-            self.f |= 0x20; // Half-carry flag
-        }
-        if old_carry {
-            self.f |= 0x10; // Carry flag (unchanged)
+        
+        // As per requirements: Zero, Subtract, and Half-carry should be 0.
+        // Only the Carry flag (bit 4) is set based on the bit 7 of A before the shift.
+        if carry_bit {
+            self.f |= 0x10; // Set Carry flag
         }
     }
 
     fn rrca(&mut self) {
-        let carry = (self.a & 0x01) != 0;
-        self.a = (self.a >> 1) | (self.a << 7);
-        
-        // Update flags
+        // 1. Capture bit 0 of register A BEFORE the shift.
+        // This value will become the new Carry flag.
+        let carry_bit = (self.a & 0x01) != 0;
+
+        // 2. Capture the current Carry flag.
+        // This value will be moved into bit 7 of register A.
+        let old_carry = (self.f & 0x10) != 0;
+
+        // 3. Perform the right rotation.
+        // Bit 0 moves to the carry flag (handled in step 4).
+        // The old carry flag is moved into bit 7.
+        self.a = (self.a >> 1) | (if old_carry { 0x80 } else { 0 });
+
+        // 4. Update flags.
+        // Clear all flags first.
         self.f = 0;
-        if self.a == 0 {
-            self.f |= 0x80; // Zero flag
-        }
-        if (self.a & 0x0F) == 0x0F {
-            self.f |= 0x20; // Half-carry flag
-        }
-        if carry {
-            self.f |= 0x10; // Carry flag
+
+        // As per requirements: Zero (bit 7), Subtract (bit 6), and Half-carry (bit 5)
+        // are set to 0. Only the Carry flag (bit 4) is updated.
+        if carry_bit {
+            self.f |= 0x10; // Set Carry flag
         }
     }
 
     fn rra(&mut self) {
+        // 1. Capture bit 0 of register A BEFORE the shift.
+        // This value will become the new Carry flag.
+        let carry_bit = (self.a & 0x01) != 0;
+
+        // 2. Capture the current Carry flag.
+        // This value will be moved into bit 7 of register A.
         let old_carry = (self.f & 0x10) != 0;
+
+        // 3. Perform the right rotation.
+        // Bit 0 moves to the carry flag (handled in step 4).
+        // The old carry flag is moved into bit 7.
         self.a = (self.a >> 1) | (if old_carry { 0x80 } else { 0 });
-        
-        // Update flags
+
+        // 4. Update flags.
+        // Clear all flags first.
         self.f = 0;
-        if self.a == 0 {
-            self.f |= 0x80; // Zero flag
-        }
-        if (self.a & 0x0F) == 0x0F {
-            self.f |= 0x20; // Half-carry flag
-        }
-        if old_carry {
-            self.f |= 0x10; // Carry flag (unchanged)
+
+        // As per requirements: Zero (bit 7), Subtract (bit 6), and Half-carry (bit 5)
+        // are set to 0. Only the Carry flag (bit 4) is updated.
+        if carry_bit {
+            self.f |= 0x10; // Set Carry flag
         }
     }
 
     fn rlca(&mut self) {
-        let carry = (self.a & 0x80) != 0;
-        self.a = self.a << 1;
-        
-        // Update flags
+        // 1. Capture the bit 7 of register A BEFORE the shift.
+        // This value will become the new Carry flag.
+        let carry_bit = (self.a & 0x80) != 0;
+
+        // 2. Capture the current Carry flag.
+        // This value will be moved into bit 0 of register A.
+        let old_carry = (self.f & 0x10) != 0;
+
+        // 3. Perform the left rotation.
+        // Bit 0 is filled by the old Carry flag.
+        self.a = (self.a << 1) | (if old_carry { 1 } else { 0 });
+
+        // 4. Update flags.
+        // Clear all flags first.
         self.f = 0;
-        if self.a == 0 {
-            self.f |= 0x80; // Zero flag
-        }
-        if (self.a & 0x0F) == 0x0F {
-            self.f |= 0x20; // Half-carry flag
-        }
-        if carry {
-            self.f |= 0x10; // Carry flag
+
+        // The Carry flag (bit 4) is updated based on the bit 7 of A 
+        // that was "pushed out" before the shift.
+        if carry_bit {
+            self.f |= 0x10; // Set Carry flag
         }
     }
 
@@ -1089,9 +1101,9 @@ impl CPU {
         self.a = self.bus.read(current_addr as u16);
 
         // 3. Increment the contents of HL (The "Increment" part)
-        let new_addr = (current_addr as u16) + 1;
-        self.h = (new_addr >> 8) as u8;
-        self.l = (new_addr & 0xFF) as u8;
+        let new_hl = current_addr.wrapping_add(1);
+        self.h = (new_hl >> 8) as u8;
+        self.l = (new_hl & 0xFF) as u8;
     }
 
     fn ld_memory_at_a16_from_a(&mut self) {
@@ -1187,10 +1199,28 @@ impl CPU {
     }
 
     fn da_adjust(&mut self) {
-        if (self.a & 0x0F) > 9 || 
-           ((self.a & 0x0F) == 0x09 && (self.f & 0x10) != 0) || 
-           ((self.a & 0x0F) == 0x08 && (self.f & 0x10) != 0) {
-            self.a = self.a.wrapping_add(6);
+        let a_value = self.a;
+        let half_carry = (self.f & 0x20) != 0;
+        let carry = (self.f & 0x10) != 0;
+        let subtract = (self.f & 0x40) != 0;
+
+        let mut offset = 0u8;
+
+        // Logic for lower nibble adjustment
+        if (!subtract && (a_value & 0xF > 0x09)) || half_carry {
+            offset |= 0x06;
+        }
+
+        // Logic for upper nibble adjustment
+        // Note: Matching your example's specific check of > 0x99
+        if (!subtract && a_value > 0x99) || carry {
+            offset |= 0x60;
+        }
+
+        if !subtract {
+            self.a = a_value.wrapping_add(offset);
+        } else {
+            self.a = a_value.wrapping_sub(offset);
         }
     }
 
@@ -1271,10 +1301,9 @@ impl CPU {
                 let high = self.bus.read(self.sp as u16) as u16;
                 self.sp += 1;
                 self.sp = (high << 8) | low;
-                self.sp += 2;
             }
             Register16::AF => {
-                self.f = self.bus.read(self.sp as u16);
+                self.f = self.bus.read(self.sp as u16) & 0xF0;
                 self.sp += 1;
                 self.a = self.bus.read(self.sp as u16);
                 self.sp += 1;
@@ -1315,7 +1344,7 @@ impl CPU {
                 self.sp -= 1;
                 self.bus.write(self.sp as u16, self.a);
                 self.sp -= 1;
-                self.bus.write(self.sp as u16, self.f);
+                self.bus.write(self.sp as u16, self.f & 0xF0);
             }
         }
     }

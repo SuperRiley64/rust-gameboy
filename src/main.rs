@@ -27,7 +27,7 @@ fn main () {
     // Load the test rom
     //
     println!("Loading test ROM");
-    cpu.bus.cartridge.load_rom("test-roms/01-special.gb")
+    cpu.bus.cartridge.load_rom("gb-test-roms-master/cpu_instrs/individual/01-special.gb")
     .expect("Failed to load the ROM file. Check the path!");
     println!("Test ROM loaded");
 
@@ -41,6 +41,6 @@ fn main () {
 
     while(true) {
         cpu.cycle();
-        //thread::sleep(Duration::from_millis(100));
+        //thread::sleep(Duration::from_millis(1));
     }
 }
