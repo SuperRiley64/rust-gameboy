@@ -191,8 +191,8 @@ impl CPU {
                 0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD HL, nn
                 0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD SP, nn
                 0xF9 => { self.sp = ((self.h as u16) << 8) | (self.l as u16); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD SP, HL
-                0xF8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; let result_sp = self.sp.wrapping_add(s8 as u16); self.assign_16bit_register(Register16::HL, result_sp); self.pc = self.pc.wrapping_add(2); self.cycles = 2; } // LD HL, SP+s8
-                0xE8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.sp = self.sp.wrapping_add(s8 as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 3; } // ADD SP, s8
+                0xF8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.update_hl_from_sp_s8(s8); self.pc = self.pc.wrapping_add(2); self.cycles = 2; } // LD HL, SP+s8
+                0xE8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.add_16bit_to_sp_s8(s8); self.pc = self.pc.wrapping_add(2); self.cycles = 3; } // ADD SP, s8
 
                 // 8-bit load register instructions
                 0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, A
@@ -851,7 +851,7 @@ impl CPU {
             Register16::BC => (self.b, self.c),
             Register16::DE => (self.d, self.e),
             Register16::HL => (self.h, self.l),
-            Register16::SP => ((self.sp >> 8) as u8, (self.sp & 0xFF) as u8),
+            Register16::SP => ((self.sp & 0xFF) as u8, (self.sp >> 8) as u8),
             Register16::AF => (self.a, self.f),
         };
 
@@ -1368,5 +1368,61 @@ impl CPU {
     fn call_address(&mut self, address: u16) {
         self.push_16bit_value(self.pc);
         self.pc = address;
+    }
+
+    fn add_16bit_to_sp_s8(&mut self, s8: i8) {
+        let val_to_add = s8 as u16;
+        let current_sp = self.sp;
+        
+        // Perform 16-bit addition
+        let (result, overflow) = current_sp.overflowing_add(val_to_add);
+        
+        // Calculate half-carry: carry from bit 3 to 4 of the low byte
+        let half_carry = ((current_sp & 0x0F) + (val_to_add & 0x0F)) > 0x0F;
+        
+        // Update the stack pointer
+        self.sp = result;
+
+        // Update flags
+        // First, clear the top 4 bits (Z, N, H, C) 
+        // This ensures Zero and Subtract flags are cleared.
+        self.f &= !0xF0;
+        
+        // Set half-carry flag (bit 5)
+        if half_carry {
+            self.f |= 0x20;
+        }
+        
+        // Set carry flag (bit 4)
+        if overflow {
+            self.f |= 0x10;
+        }
+    }
+
+    fn update_hl_from_sp_s8(&mut self, s8: i8) {
+        let val_to_add = s8 as u16;
+        let current_sp = self.sp;
+        
+        // Perform 16-bit addition
+        let (result, overflow) = current_sp.overflowing_add(val_to_add);
+        
+        // Calculate half-carry: carry from bit 3 to 4 of the low byte
+        let half_carry = ((current_sp & 0x0F) + (val_to_add & 0x0F)) > 0x0F;
+        
+        // Update HL register
+        self.assign_16bit_register(Register16::HL, result);
+
+        // Clear all flags (Zero, Subtract, Half-Carry, Carry)
+        self.f = 0;
+        
+        // Set half-carry flag (bit 5)
+        if half_carry {
+            self.f |= 0x20;
+        }
+        
+        // Set carry flag (bit 4)
+        if overflow {
+            self.f |= 0x10;
+        }
     }
 }
