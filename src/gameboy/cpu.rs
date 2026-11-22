@@ -336,10 +336,10 @@ impl CPU {
                 
                 // Jump instructions
                 0x18 => { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } // JR s8
-                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR NZ s8
-                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR NC s8
-                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR Z s8
-                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); } else { self.pc = self.pc.wrapping_add(2); } self.cycles = 2; } // JR C s8
+                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR NZ s8
+                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR NC s8
+                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR Z s8
+                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR C s8
                 0xE9 => { self.pc = ((self.h as u16) << 8) | (self.l as u16); self.cycles = 0; } // JP HL
 
                 0xC3 => { self.jump_nn(); self.cycles = 2; } // JP a16
@@ -1188,8 +1188,11 @@ impl CPU {
         self.d = self.a;
     }
 
-    fn get_16_bit_operand(&self, index: u16) -> u16 {                                                                                                                                        
-        self.bus.read((index + 1) as u16) as u16 | (self.bus.read((index + 2) as u16) as u16) << 8
+    fn get_16_bit_operand(&self, index: u16) -> u16 {
+        let low = self.bus.read(index.wrapping_add(1)) as u16;
+        let high = self.bus.read(index.wrapping_add(2)) as u16;
+
+        low | (high << 8)
     }
 
     fn ld_memory_at_a16_from_sp(&mut self) {
@@ -1351,10 +1354,11 @@ impl CPU {
 
     // Helper method to push a raw 16-bit value onto the stack
     fn push_16bit_value(&mut self, value: u16) {
-        self.sp -= 1;
-        self.bus.write(self.sp as u16, (value >> 8) as u8);
-        self.sp -= 1;
-        self.bus.write(self.sp as u16, (value & 0xFF) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        self.bus.write(self.sp, (value >> 8) as u8);
+
+        self.sp = self.sp.wrapping_sub(1);
+        self.bus.write(self.sp, (value & 0xFF) as u8);
     }
 
     // Helper method to pop a raw 16-bit value from the stack
@@ -1372,9 +1376,8 @@ impl CPU {
         self.pc = self.get_16_bit_operand(self.pc);
     }
 
-    fn call_address(&mut self, address: u16){
-        let return_address = self.pc.wrapping_add(3);
-        self.push_16bit_value(return_address);
+    fn call_address(&mut self, address: u16) {
+        self.push_16bit_value(self.pc);
         self.pc = address;
     }
 }
