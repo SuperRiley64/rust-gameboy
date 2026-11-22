@@ -1038,7 +1038,7 @@ impl CPU {
     }
 
     fn ld_a_from_a8(&mut self) {
-        let addr = self.bus.read((self.pc + 1) as u16) as u16;
+        let addr = 0xFF00 | self.bus.read(self.pc.wrapping_add(1)) as u16;
         self.a = self.bus.read(addr);
     }
 
@@ -1112,19 +1112,8 @@ impl CPU {
     }
 
     fn ld_memory_at_a8_from_a(&mut self) {
-        // 1. Fetch the 8-bit immediate operand from the memory 
-        //    located immediately after the current Program Counter.
-        let immediate_value = self.bus.read((self.pc + 1) as u16);
-
-
-        // 2. Construct the 16-bit address.
-        //    The high byte is 0xFF (fixed) and the low byte is the immediate value.
-        let address: u16 = 0xFF00 + (immediate_value as u16);
-
-        // 3. Store the contents of Register A into that calculated address.
-        if address <= 0xFFFF {
-            self.bus.write(address as u16, self.a);
-        }
+        let addr = 0xFF00 | self.bus.read(self.pc.wrapping_add(1)) as u16;
+        self.bus.write(addr, self.a);
     }
 
     fn ld_memory_at_bc_from_a(&mut self) {
