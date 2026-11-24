@@ -140,13 +140,13 @@ impl CPU {
                 0x76 => { self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // HALT //TODO: Interrupt/Reset
                 
                 // 8-bit transfer instructions
-                0x3E => { self.a = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD A, n
-                0x06 => { self.b = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD B, n
-                0x0E => { self.c = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD C, n
-                0x16 => { self.d = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD D, n
-                0x1E => { self.e = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD E, n
-                0x26 => { self.h = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD H, n
-                0x2E => { self.l = self.bus.read((self.pc + 1) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD L, n
+                0x3E => { self.a = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD A, n
+                0x06 => { self.b = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD B, n
+                0x0E => { self.c = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD C, n
+                0x16 => { self.d = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD D, n
+                0x1E => { self.e = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD E, n
+                0x26 => { self.h = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD H, n
+                0x2E => { self.l = self.bus.read((self.pc.wrapping_add(1)) as u16); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // LD L, n
                 
                 0xFA => { self.ld_a_from_a16(); self.pc = self.pc.wrapping_add(3); self.cycles = 3;} // LD A, (a16)
                 0xF0 => { self.ld_a_from_a8(); self.pc = self.pc.wrapping_add(2); self.cycles = 2;} // LD A, (a8)
@@ -191,8 +191,8 @@ impl CPU {
                 0x21 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::HL, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD HL, nn
                 0x31 => { let val = self.get_16_bit_operand(self.pc); self.assign_16bit_register(Register16::SP, val); self.pc = self.pc.wrapping_add(3); self.cycles = 2; } // LD SP, nn
                 0xF9 => { self.sp = ((self.h as u16) << 8) | (self.l as u16); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // LD SP, HL
-                0xF8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.update_hl_from_sp_s8(s8); self.pc = self.pc.wrapping_add(2); self.cycles = 2; } // LD HL, SP+s8
-                0xE8 => { let s8 = self.bus.read((self.pc + 1) as u16) as i8; self.add_16bit_to_sp_s8(s8); self.pc = self.pc.wrapping_add(2); self.cycles = 3; } // ADD SP, s8
+                0xF8 => { let s8 = self.bus.read((self.pc.wrapping_add(1)) as u16) as i8; self.update_hl_from_sp_s8(s8); self.pc = self.pc.wrapping_add(2); self.cycles = 2; } // LD HL, SP+s8
+                0xE8 => { let s8 = self.bus.read((self.pc.wrapping_add(1)) as u16) as i8; self.add_16bit_to_sp_s8(s8); self.pc = self.pc.wrapping_add(2); self.cycles = 3; } // ADD SP, s8
 
                 // 8-bit load register instructions
                 0x7F => { self.ld_reg_to_reg(Register8::A, Register8::A); self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // LD A, A
@@ -325,21 +325,21 @@ impl CPU {
                 0xBE => {let addr = ((self.h as u16) << 8 | self.l as u16); _ = self.sub_8_bit(self.a, self.bus.read(addr)); self.pc = self.pc.wrapping_add(1); self.cycles = 1; } // CP A, (HL)
 
                 // immediate arithmetic instructions
-                0xC6 => { self.a = self.add_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // ADD d8
-                0xCE => { self.a = self.adc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // ADC d8
-                0xD6 => { self.a = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // SUB d8
-                0xDE => { self.a = self.sbc_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // SBC d8
-                0xE6 => { self.a = self.and_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // AND d8
-                0xEE => { self.a = self.xor_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // XOR d8
-                0xF6 => { self.a = self.or_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // OR d8
-                0xFE => { _ = self.sub_8_bit(self.a, self.bus.read((self.pc + 1) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // CP d8
+                0xC6 => { self.a = self.add_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // ADD d8
+                0xCE => { self.a = self.adc_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // ADC d8
+                0xD6 => { self.a = self.sub_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // SUB d8
+                0xDE => { self.a = self.sbc_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1; } // SBC d8
+                0xE6 => { self.a = self.and_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // AND d8
+                0xEE => { self.a = self.xor_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // XOR d8
+                0xF6 => { self.a = self.or_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // OR d8
+                0xFE => { _ = self.sub_8_bit(self.a, self.bus.read((self.pc.wrapping_add(1)) as u16)); self.pc = self.pc.wrapping_add(2); self.cycles = 1;} // CP d8
                 
                 // Jump instructions
-                0x18 => { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } // JR s8
-                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR NZ s8
-                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR NC s8
-                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR Z s8
-                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc + 1) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR C s8
+                0x18 => { self.jump_r_s8(self.bus.read((self.pc.wrapping_add(1)) as u16) as i8); self.cycles = 2; } // JR s8
+                0x20 => { if (self.f & 0x80) == 0 { self.jump_r_s8(self.bus.read((self.pc.wrapping_add(1)) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR NZ s8
+                0x30 => { if (self.f & 0x10) == 0 { self.jump_r_s8(self.bus.read((self.pc.wrapping_add(1)) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR NC s8
+                0x28 => { if (self.f & 0x80) == 0x80 { self.jump_r_s8(self.bus.read((self.pc.wrapping_add(1)) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR Z s8
+                0x38 => { if (self.f & 0x10) == 0x10 { self.jump_r_s8(self.bus.read((self.pc.wrapping_add(1)) as u16) as i8); self.cycles = 2; } else { self.pc = self.pc.wrapping_add(2); self.cycles = 1; }} // JR C s8
                 0xE9 => { self.pc = ((self.h as u16) << 8) | (self.l as u16); self.cycles = 0; } // JP HL
 
                 0xC3 => { self.jump_nn(); self.cycles = 2; } // JP a16
@@ -720,9 +720,13 @@ impl CPU {
     // Helper method for 8-bit Subtract with Carry (SBC) instructions
     fn sbc_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
         let carry_input = (self.f & 0x10) != 0;
-        // The value to subtract is the register value plus the carry bit
-        let val_to_sub = reg2.wrapping_add(if carry_input { 1 } else { 0 });
-        let result = reg1.wrapping_sub(val_to_sub);
+        
+        // Calculate the total value to subtract as a 16-bit value.
+        // This preserves the overflow information needed for the Carry flag.
+        let val_to_sub = (reg2 as u16) + (if carry_input { 1 } else { 0 });
+        
+        // The result is the 8-bit subtraction.
+        let result = reg1.wrapping_sub(val_to_sub as u8);
 
         // Preserve bits 0-3 of the flags register
         self.f &= 0xF0;
@@ -735,14 +739,17 @@ impl CPU {
         }
 
         // Set Half-Carry flag (bit 5): 1 if lower 4 bits caused a borrow
-        if (reg1 as u16 & 0x0F) < (val_to_sub as u16 & 0x0F) {
+        // A borrow occurred if the lower nibble of reg1 is less than 
+        // the lower nibble of the value to subtract.
+        if (reg1 as u16 & 0x0F) < (val_to_sub & 0x0F) {
             self.f |= 0x20;
         } else {
             self.f &= !0x20;
         }
 
         // Set Carry Flag (bit 4): 1 if an 8-bit borrow occurred
-        if reg1 < val_to_sub {
+        // A borrow occurred if reg1 is less than the total 16-bit value to subtract.
+        if (reg1 as u16) < val_to_sub {
             self.f |= 0x10;
         } else {
             self.f &= !0x10;
@@ -892,8 +899,8 @@ impl CPU {
         // According to your rules:
         // Byte at (pc + 1) is the lower-order byte (bits 0-7)
         // Byte at (pc + 2) is the higher-order byte (bits 8-15)
-        let low_byte = self.bus.read((self.pc + 1) as u16) as u16;
-        let high_byte = self.bus.read((self.pc + 2) as u16) as u16;
+        let low_byte = self.bus.read((self.pc.wrapping_add(1)) as u16) as u16;
+        let high_byte = self.bus.read((self.pc.wrapping_add(2)) as u16) as u16;
         
         // 2. Combine them into a 16-bit address
         // Shift high_byte left by 8 bits and combine with low_byte
@@ -1155,7 +1162,7 @@ impl CPU {
 
     fn ld_memory_at_hl_from_d8(&mut self) {
         let hl = ((self.h as u16) << 8) | self.l as u16;
-        let val = self.bus.read((self.pc + 1) as u16);
+        let val = self.bus.read((self.pc.wrapping_add(1)) as u16);
         self.bus.write(hl, val);
     }
 
