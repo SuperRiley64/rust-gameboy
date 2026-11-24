@@ -719,46 +719,33 @@ impl CPU {
 
     // Helper method for 8-bit Subtract with Carry (SBC) instructions
     fn sbc_8_bit(&mut self, reg1: u8, reg2: u8) -> u8 {
-        let carry_input = (self.f & 0x10) != 0;
-        
-        // Calculate the total value to subtract as a 16-bit value.
-        // This preserves the overflow information needed for the Carry flag.
-        let val_to_sub = (reg2 as u16) + (if carry_input { 1 } else { 0 });
-        
-        // The result is the 8-bit subtraction.
-        let result = reg1.wrapping_sub(val_to_sub as u8);
+        let carry_in: u16 = if self.f & 0x10 != 0 { 1 } else { 0 };
 
-        // Preserve bits 0-3 of the flags register
-        self.f &= 0xF0;
+        let a = reg1 as u16;
+        let operand = reg2 as u16;
 
-        // Set Zero Flag (bit 7): 1 if result is 0
-        if result == 0 {
+        let result = a.wrapping_sub(operand + carry_in);
+        let result_8bit = result as u8;
+
+        // Clear flags before recalculating
+        self.f = 0x40; // N = 1
+
+        // Z: Result is zero
+        if result_8bit == 0 {
             self.f |= 0x80;
-        } else {
-            self.f &= !0x80;
         }
 
-        // Set Half-Carry flag (bit 5): 1 if lower 4 bits caused a borrow
-        // A borrow occurred if the lower nibble of reg1 is less than 
-        // the lower nibble of the value to subtract.
-        if (reg1 as u16 & 0x0F) < (val_to_sub & 0x0F) {
+        // H: Borrow from bit 4
+        if (a & 0x0F) < ((operand & 0x0F) + carry_in) {
             self.f |= 0x20;
-        } else {
-            self.f &= !0x20;
         }
 
-        // Set Carry Flag (bit 4): 1 if an 8-bit borrow occurred
-        // A borrow occurred if reg1 is less than the total 16-bit value to subtract.
-        if (reg1 as u16) < val_to_sub {
+        // C: Borrow from bit 8
+        if a < operand + carry_in {
             self.f |= 0x10;
-        } else {
-            self.f &= !0x10;
         }
 
-        // Set Subtract flag (bit 6)
-        self.f |= 0x40;
-
-        result
+        result_8bit
     }
 
     // Helper method for 8-bit AND instructions
@@ -949,14 +936,10 @@ impl CPU {
         // This value will become the new Carry flag.
         let carry_bit = (self.a & 0x01) != 0;
 
-        // 2. Capture the current Carry flag.
-        // This value will be moved into bit 7 of register A.
-        let old_carry = (self.f & 0x10) != 0;
-
         // 3. Perform the right rotation.
         // Bit 0 moves to the carry flag (handled in step 4).
         // The old carry flag is moved into bit 7.
-        self.a = (self.a >> 1) | (if old_carry { 0x80 } else { 0 });
+        self.a = (self.a >> 1) | (if carry_bit { 0x80 } else { 0 });
 
         // 4. Update flags.
         // Clear all flags first.
@@ -999,13 +982,8 @@ impl CPU {
         // This value will become the new Carry flag.
         let carry_bit = (self.a & 0x80) != 0;
 
-        // 2. Capture the current Carry flag.
-        // This value will be moved into bit 0 of register A.
-        let old_carry = (self.f & 0x10) != 0;
-
         // 3. Perform the left rotation.
-        // Bit 0 is filled by the old Carry flag.
-        self.a = (self.a << 1) | (if old_carry { 1 } else { 0 });
+        self.a = (self.a << 1) | (if carry_bit { 1 } else { 0 });
 
         // 4. Update flags.
         // Clear all flags first.
@@ -1198,28 +1176,50 @@ impl CPU {
     }
 
     fn da_adjust(&mut self) {
-        let a_value = self.a;
-        let half_carry = (self.f & 0x20) != 0;
-        let carry = (self.f & 0x10) != 0;
-        let subtract = (self.f & 0x40) != 0;
+        let n_flag = self.f & 0x40 != 0;
+        let h_flag = self.f & 0x20 != 0;
+        let mut c_flag = self.f & 0x10 != 0;
 
-        let mut offset = 0u8;
+        let mut correction = 0u8;
 
-        // Logic for lower nibble adjustment
-        if (!subtract && (a_value & 0xF > 0x09)) || half_carry {
-            offset |= 0x06;
-        }
+        if !n_flag {
+            // After addition
+            if c_flag || self.a > 0x99 {
+                correction |= 0x60;
+                c_flag = true;
+            }
 
-        // Logic for upper nibble adjustment
-        // Note: Matching your example's specific check of > 0x99
-        if (!subtract && a_value > 0x99) || carry {
-            offset |= 0x60;
-        }
+            if h_flag || (self.a & 0x0F) > 0x09 {
+                correction |= 0x06;
+            }
 
-        if !subtract {
-            self.a = a_value.wrapping_add(offset);
+            self.a = self.a.wrapping_add(correction);
         } else {
-            self.a = a_value.wrapping_sub(offset);
+            // After subtraction
+            if c_flag {
+                correction |= 0x60;
+            }
+
+            if h_flag {
+                correction |= 0x06;
+            }
+
+            self.a = self.a.wrapping_sub(correction);
+        }
+
+        // Rebuild flags
+        self.f = 0;
+
+        if self.a == 0 {
+            self.f |= 0x80; // Z
+        }
+
+        if n_flag {
+            self.f |= 0x40; // N (preserved)
+        }
+
+        if c_flag {
+            self.f |= 0x10; // C
         }
     }
 

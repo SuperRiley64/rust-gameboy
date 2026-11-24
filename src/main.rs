@@ -27,7 +27,7 @@ fn main () {
     // Load the test rom
     //
     println!("Loading test ROM");
-    cpu.bus.cartridge.load_rom("gb-test-roms-master/cpu_instrs/individual/09-op r,r.gb")
+    cpu.bus.cartridge.load_rom("gb-test-roms-master/cpu_instrs/individual/02-interrupts.gb")
     .expect("Failed to load the ROM file. Check the path!");
     println!("Test ROM loaded");
 
