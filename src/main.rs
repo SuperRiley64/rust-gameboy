@@ -2,7 +2,7 @@ mod gameboy;
 mod tests;
 use gameboy::cpu::CPU;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn main () {
     println!("Initializing CPU");
@@ -11,7 +11,7 @@ fn main () {
     //
     // Initialize the CPU to post-boot state (No boot rom required)
     //
-
+    
     cpu.a = 0x01;
     cpu.f = 0xb0;
     cpu.b = 0x00;
@@ -34,13 +34,50 @@ fn main () {
     //
     // Run the CPU
     //
-
-    let mut cycle_num: i64 = 0;
+    
+    let mut ticks :u64 = 0;
+    let mut next_tick_time = Instant::now();
+    // 1 master clock tick is 1 / 4.194304 MHz = ~238.4 ns
+    let target = Duration::from_nanos(238);
 
     println!("Running CPU forever\n\n");
 
-    while(true) {
-        cpu.cycle();
-        //thread::sleep(Duration::from_millis(1));
+    while true {
+        ticks += 1;
+
+        // CPU - 1.048576 MHz
+        if ticks % 4 == 0 {
+            cpu.cycle();
+            ticks = 0;
+        }
+
+        // Serial 8192Hz
+        if ticks % 512 == 0 {
+            cpu.bus.serial.cycle();
+        }
+
+        // Timing calculation and spin loop
+        let now = Instant::now();
+        if now >= next_tick_time {
+            next_tick_time += target;
+            
+            // If we are significantly behind, jump to now to avoid huge lag
+            if now > next_tick_time {
+                next_tick_time = now + target;
+            }
+            
+            if now < next_tick_time {
+                let remaining = next_tick_time - now;
+                // Only sleep if we have a significant amount of time to spare
+                if remaining > Duration::from_millis(1) {
+                    thread::sleep(remaining);
+                } else {
+                    // Spin-loop for high-precision timing in the short term
+                    while Instant::now() < next_tick_time {
+                        std::hint::spin_loop();
+                    }
+                }
+            }
+        }
     }
 }
