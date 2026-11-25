@@ -29,6 +29,7 @@ pub struct CPU {
     pub l: u8,
     pub ime: bool, // interrupt master enable (write-only)
     pub halt: bool,
+    pub stop: bool,
     pub sp: u16,
     pub pc: u16,
     pub cycles: u8,
@@ -48,6 +49,7 @@ impl CPU {
             l: 0,
             ime: false, // unset when game starts running
             halt: false,
+            stop: false,
             sp: 0xFFFE, // fffe because ffff is the interrupt enable register
             pc: 0,
             cycles: 0,
@@ -58,9 +60,6 @@ impl CPU {
     // Runs interrupts, halts, and the fetch decode execute cycle
     pub fn cycle(&mut self) {
         //println!("Cycle pc: {} | wait cycles: {}", self.pc, self.cycles);
-
-        //TODO: tick serial from a reliable clock source
-        self.bus.serial.cycle();
 
         // service interrupts
         if self.ime && self.cycles == 0 { // If interrupts are enabled...
@@ -136,7 +135,7 @@ impl CPU {
             // cycles is always the documented cycles minus 1.
             match opcode {
                 0x00 => { self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // NOP
-                0x10 => { self.pc = self.pc.wrapping_add(2); self.cycles = 0; } // STOP //TODO: Handle RESET
+                0x10 => { self.pc = self.pc.wrapping_add(2); self.cycles = 0; self.stop = true; self.bus.timer.reset_div();} // STOP //TODO: Handle RESET
                 0x76 => { self.pc = self.pc.wrapping_add(1); self.cycles = 0; } // HALT //TODO: Interrupt/Reset
                 
                 // 8-bit transfer instructions

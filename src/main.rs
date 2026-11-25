@@ -35,7 +35,9 @@ fn main () {
     // Run the CPU
     //
     
-    let mut ticks :u64 = 0;
+    let mut t_cycles :u64 = 0;
+    let mut m_cycles :u64 = 0;
+
     let mut next_tick_time = Instant::now();
     // 1 master clock tick is 1 / 4.194304 MHz = ~238.4 ns
     let target = Duration::from_nanos(238);
@@ -43,17 +45,27 @@ fn main () {
     println!("Running CPU forever\n\n");
 
     while true {
-        ticks += 1;
+        t_cycles += 1;
+
+        // Process interrupts
+        cpu.bus.irq_cycle();
 
         // CPU - 1.048576 MHz
-        if ticks % 4 == 0 {
+        if t_cycles % 4 == 0 {
+
+            if !cpu.stop {
+                cpu.bus.timer.cycle(m_cycles);
+            }
+
             cpu.cycle();
-            ticks = 0;
+            m_cycles += 1;
         }
 
         // Serial 8192Hz
-        if ticks % 512 == 0 {
-            cpu.bus.serial.cycle();
+        if t_cycles % 512 == 0 {
+            if !cpu.stop {
+                cpu.bus.serial.cycle();
+            }
         }
 
         // Timing calculation and spin loop
