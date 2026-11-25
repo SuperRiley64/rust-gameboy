@@ -50,13 +50,13 @@ fn main () {
         // Process interrupts
         cpu.bus.irq_cycle();
 
+        // Timer
+        if !cpu.stop {
+            cpu.bus.timer.cycle(m_cycles);
+        }
+
         // CPU - 1.048576 MHz
         if t_cycles % 4 == 0 {
-
-            if !cpu.stop {
-                cpu.bus.timer.cycle(m_cycles);
-            }
-
             cpu.cycle();
             m_cycles += 1;
         }
